@@ -63,7 +63,7 @@ export function ContributeDialog({
 }: ContributeDialogProps) {
   const [amount, setAmount] = useState('')
   const [pessoa, setPessoa] = useState('')
-  const [congregacao, setCongregacao] = useState<Congregacao>('Zimbros')
+  const [congregacao, setCongregacao] = useState<Congregacao | ''>('')
   const [sabor, setSabor] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -71,7 +71,7 @@ export function ContributeDialog({
     if (!open || !item) return
     setAmount('')
     setPessoa('')
-    setCongregacao('Zimbros')
+    setCongregacao('')
     setSabor(item.sabores?.[0] ?? '')
   }, [open, item])
 
@@ -97,6 +97,10 @@ export function ContributeDialog({
     }
     if (!pessoa.trim()) {
       toast.error('Informe o seu nome')
+      return
+    }
+    if (!congregacao) {
+      toast.error('Selecione a sua comum congregação')
       return
     }
     if (current.sabores?.length && !sabor) {
@@ -183,7 +187,7 @@ export function ContributeDialog({
               id="contrib-nome"
               value={pessoa}
               disabled={disabled || busy}
-              placeholder="Ex.: Felipe"
+              placeholder="João"
               className="h-11 text-base"
               autoComplete="name"
               onChange={(e) => setPessoa(e.target.value)}
@@ -193,7 +197,7 @@ export function ContributeDialog({
           <div className="space-y-2">
             <Label>Qual a sua comum congregação?</Label>
             <RadioGroup
-              value={congregacao}
+              value={congregacao || undefined}
               onValueChange={(v) => setCongregacao(v as Congregacao)}
               className="grid gap-2"
               disabled={disabled || busy}

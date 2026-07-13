@@ -30,22 +30,27 @@ function MealSummaryCard({
 }) {
   const { items, quantities } = catalog[meal]
   const progress = mealProgress(items, quantities)
-  const missing = items
+  const rows = items
     .filter((item) => item.editavel !== false)
     .map((item) => {
       const required = parseRequiredQty(item.qtdNecessaria)
       const got = getItemTotal(item, quantities)
       const unit = parseUnit(item.qtdNecessaria)
       const integer = isIntegerUnit(unit)
-      if (required == null) return null
-      const falta = required - got
-      if (falta <= 0) return null
+      const complete = required != null ? got >= required : got > 0
+      const falta =
+        required != null && got < required
+          ? formatQty(required - got, unit, integer)
+          : null
+
       return {
         nome: item.nome,
-        falta: formatQty(falta, unit, integer),
+        necessario: item.qtdNecessaria || '—',
+        entrou: formatQty(got, unit, integer),
+        falta,
+        complete,
       }
     })
-    .filter(Boolean) as { nome: string; falta: string }[]
 
   return (
     <section className="rounded-xl border bg-card p-4 shadow-sm">
@@ -85,24 +90,33 @@ function MealSummaryCard({
         />
       </div>
 
-      {missing.length > 0 ? (
-        <ul className="space-y-1.5 text-sm">
-          {missing.slice(0, 8).map((m) => (
-            <li key={m.nome} className="flex justify-between gap-2">
-              <span className="truncate text-muted-foreground">{m.nome}</span>
-              <span className="shrink-0 font-medium tabular-nums text-destructive">
-                falta {m.falta}
-              </span>
+      {rows.length > 0 ? (
+        <ul className="max-h-[28rem] space-y-2 overflow-y-auto text-sm">
+          {rows.map((row) => (
+            <li
+              key={row.nome}
+              className="flex items-start justify-between gap-3 border-b border-border/50 pb-2 last:border-0 last:pb-0"
+            >
+              <div className="min-w-0">
+                <p className="font-medium leading-tight">{row.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  Necessário {row.necessario} · Entrou {row.entrou}
+                </p>
+              </div>
+              {row.complete ? (
+                <Badge className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-600">
+                  Completo
+                </Badge>
+              ) : (
+                <span className="shrink-0 text-right text-xs font-medium tabular-nums text-destructive">
+                  {row.falta ? `falta ${row.falta}` : 'Pendente'}
+                </span>
+              )}
             </li>
           ))}
-          {missing.length > 8 ? (
-            <li className="text-xs text-muted-foreground">
-              +{missing.length - 8} itens…
-            </li>
-          ) : null}
         </ul>
       ) : (
-        <p className="text-sm text-emerald-700">Tudo completo nesta refeição.</p>
+        <p className="text-sm text-muted-foreground">Nenhum item nesta aba.</p>
       )}
 
       <Button asChild variant="outline" className="mt-4 w-full">
