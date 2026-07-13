@@ -109,32 +109,14 @@ export function MealPage({
         <LoadingOverlay message="Carregando ingredientes…" />
       ) : null}
 
-      {syncing && !showOverlay ? (
-        <div
-          className="flex items-center justify-center gap-2 rounded-lg border bg-muted/60 px-3 py-2 text-sm text-muted-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          <Loader2 className="size-4 animate-spin" />
-          Sincronizando…
-        </div>
-      ) : null}
-
       <div className="sticky top-14 z-20 -mx-3 space-y-3 border-b bg-background/95 px-3 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:-mx-4 sm:px-4 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
               {MEAL_LABELS[meal]}
             </h1>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-              {syncing || loading ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Sincronizando…
-                </>
-              ) : (
-                <>Sync {formatSynced(lastSyncedAt)}</>
-              )}
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Sync {formatSynced(lastSyncedAt)}
               {saving ? ' · salvando…' : ''}
             </p>
           </div>
