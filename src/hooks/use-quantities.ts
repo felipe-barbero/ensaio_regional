@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { MealKey } from '@/data/ingredients'
 import {
-  fetchQuantities,
+  EMPTY_CATALOG,
+  type CatalogMap,
+  type MealKey,
+} from '@/data/ingredients'
+import {
+  fetchCatalog,
   isApiConfigured,
   updateQuantities,
-  type QuantitiesMap,
 } from '@/lib/api'
 
 const POLL_MS = 30_000
 
-const EMPTY: QuantitiesMap = { Cafe: {}, Almoco: {} }
-
-export function useQuantities() {
-  const [quantities, setQuantities] = useState<QuantitiesMap>(EMPTY)
+export function useCatalog() {
+  const [catalog, setCatalog] = useState<CatalogMap>(EMPTY_CATALOG)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -36,9 +37,9 @@ export function useQuantities() {
     if (!silent) setLoading(true)
 
     try {
-      const data = await fetchQuantities()
+      const data = await fetchCatalog()
       if (id !== requestId.current) return
-      setQuantities(data)
+      setCatalog(data)
       setLastSyncedAt(new Date())
       setError(null)
     } catch (err) {
@@ -59,7 +60,6 @@ export function useQuantities() {
     void refresh()
   }, [refresh])
 
-  // Ao voltar para a aba/app, sincroniza na hora
   useEffect(() => {
     if (!configured) return
 
@@ -95,9 +95,12 @@ export function useQuantities() {
       const entries = Object.entries(updates)
       if (entries.length === 0) return
 
-      setQuantities((prev) => ({
+      setCatalog((prev) => ({
         ...prev,
-        [sheet]: { ...prev[sheet], ...updates },
+        [sheet]: {
+          ...prev[sheet],
+          quantities: { ...prev[sheet].quantities, ...updates },
+        },
       }))
       setLastSyncedAt(new Date())
 
@@ -109,7 +112,7 @@ export function useQuantities() {
       try {
         setSaving(true)
         const data = await updateQuantities(sheet, updates)
-        setQuantities(data)
+        setCatalog(data)
         setLastSyncedAt(new Date())
         setError(null)
       } catch (err) {
@@ -125,15 +128,8 @@ export function useQuantities() {
     [refresh],
   )
 
-  const setEntered = useCallback(
-    async (sheet: MealKey, nome: string, qtd: string) => {
-      await setEnteredMany(sheet, { [nome]: qtd })
-    },
-    [setEnteredMany],
-  )
-
   return {
-    quantities,
+    catalog,
     loading,
     syncing,
     saving,
@@ -141,7 +137,9 @@ export function useQuantities() {
     error,
     configured,
     refresh,
-    setEntered,
     setEnteredMany,
   }
 }
+
+/** Alias para compatibilidade */
+export const useQuantities = useCatalog

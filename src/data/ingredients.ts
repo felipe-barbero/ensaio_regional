@@ -11,47 +11,80 @@ export type Ingredient = {
   sabores?: string[]
 }
 
+/** Linha crua vinda da planilha */
+export type SheetRow = {
+  nome: string
+  qtdNecessaria: string
+  qtdEntrou: string
+  sabores?: string
+}
+
+export type MealCatalog = {
+  items: Ingredient[]
+  quantities: Record<string, string>
+}
+
+export type CatalogMap = Record<MealKey, MealCatalog>
+
 export const MEAL_LABELS: Record<MealKey, string> = {
   Cafe: 'Café da Manhã',
   Almoco: 'Almoço',
 }
 
-export const INGREDIENTS: Record<MealKey, Ingredient[]> = {
-  Cafe: [
-    { nome: 'Açúcar', qtdNecessaria: '10 kg' },
-    { nome: 'Café', qtdNecessaria: '4 pc' },
-    { nome: 'Leite', qtdNecessaria: '36 L' },
-    { nome: 'Nescau', qtdNecessaria: '5 pc' },
-    { nome: 'Presunto', qtdNecessaria: '2 kg' },
-    { nome: 'Queijo fatiado', qtdNecessaria: '2 kg' },
-    { nome: 'Melancia', qtdNecessaria: '4 un' },
-    { nome: 'Banana', qtdNecessaria: '3 kg' },
-    { nome: 'Uva', qtdNecessaria: '5 kg' },
-    { nome: 'Laranja', qtdNecessaria: '5 kg' },
-    {
-      nome: 'Bolo',
-      qtdNecessaria: '18 un',
-      sabores: ['Chocolate', 'Cenoura', 'Cuca'],
-    },
-    { nome: 'Pão', qtdNecessaria: '500 un' },
-    { nome: 'Bandeja para café', qtdNecessaria: '400 un' },
-    { nome: 'Copo descartável', qtdNecessaria: '400 un' },
-    { nome: 'Guardanapos', qtdNecessaria: '1 un' },
-    { nome: 'Luva', qtdNecessaria: '1 cx' },
-    { nome: 'Touca', qtdNecessaria: '1 pc' },
-    { nome: 'Máscara', qtdNecessaria: '1 cx' },
-  ],
-  Almoco: [
-    { nome: 'Refrigerante', qtdNecessaria: '40 un' },
-    { nome: 'Marmita 500 ml', qtdNecessaria: '200 un' },
-    { nome: 'Marmita 750 ml', qtdNecessaria: '200 un' },
-    { nome: 'Garfos', qtdNecessaria: '400 un' },
-    { nome: 'Colheres', qtdNecessaria: '400 un' },
-  ],
+export const EMPTY_CATALOG: CatalogMap = {
+  Cafe: { items: [], quantities: {} },
+  Almoco: { items: [], quantities: {} },
 }
 
 export function flavorStorageKey(nome: string, sabor: string): string {
   return `${nome}::${sabor}`
+}
+
+function parseSaboresField(raw?: string): string[] {
+  if (!raw?.trim()) return []
+  return raw
+    .split(/[,;/|]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/** Monta lista exibida + mapa de quantidades a partir das linhas da planilha */
+export function buildMealCatalog(rows: SheetRow[]): MealCatalog {
+  const quantities: Record<string, string> = {}
+  const flavorsByParent: Record<string, string[]> = {}
+
+  for (const row of rows) {
+    const nome = row.nome.trim()
+    if (!nome) continue
+    quantities[nome] = row.qtdEntrou ?? ''
+
+    if (nome.includes('::')) {
+      const [parent, flavor] = nome.split('::')
+      const p = parent.trim()
+      const f = flavor.trim()
+      if (p && f) {
+        flavorsByParent[p] = [...(flavorsByParent[p] ?? []), f]
+      }
+    }
+  }
+
+  const items: Ingredient[] = []
+  for (const row of rows) {
+    const nome = row.nome.trim()
+    if (!nome || nome.includes('::')) continue
+
+    const fromColumn = parseSaboresField(row.sabores)
+    const fromChildren = flavorsByParent[nome] ?? []
+    const sabores = fromColumn.length > 0 ? fromColumn : fromChildren
+
+    items.push({
+      nome,
+      qtdNecessaria: row.qtdNecessaria ?? '',
+      ...(sabores.length > 0 ? { sabores } : {}),
+    })
+  }
+
+  return { items, quantities }
 }
 
 /** Extrai o número da qtd necessária para comparar com o que entrou */
@@ -64,8 +97,18 @@ export function parseRequiredQty(qtdNecessaria: string): number | null {
 export function parseUnit(qtdNecessaria: string): Unit {
   const match = qtdNecessaria
     .trim()
-    .match(/\d+(?:[.,]\d+)?\s*(kg|l|un|pc|pct|cx|ml)\b/i)
-  if (!match) return ''
+    .match(/(?:^|\s)(kg|l|un|pc|pct|cx|ml)\b/i)
+  if (!match) {
+    // tenta padrão "10 kg"
+    const withNumber = qtdNecessaria
+      .trim()
+      .match(/\d+(?:[.,]\d+)?\s*(kg|l|un|pc|pct|cx|ml)\b/i)
+    if (!withNumber) return ''
+    const raw = withNumber[1].toLowerCase()
+    if (raw === 'l') return 'L'
+    if (raw === 'pct') return 'pc'
+    return raw as Unit
+  }
   const raw = match[1].toLowerCase()
   if (raw === 'l') return 'L'
   if (raw === 'pct') return 'pc'

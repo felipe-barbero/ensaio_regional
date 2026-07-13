@@ -10,11 +10,11 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { useQuantities } from '@/hooks/use-quantities'
+import { useCatalog } from '@/hooks/use-quantities'
 
 export default function App() {
   const {
-    quantities,
+    catalog,
     loading,
     syncing,
     saving,
@@ -22,7 +22,7 @@ export default function App() {
     error,
     refresh,
     setEnteredMany,
-  } = useQuantities()
+  } = useCatalog()
 
   const handleRefresh = useCallback(() => {
     void refresh(true)
@@ -49,7 +49,8 @@ export default function App() {
             element={
               <MealPage
                 meal="Cafe"
-                quantities={quantities}
+                items={catalog.Cafe.items}
+                quantities={catalog.Cafe.quantities}
                 loading={loading}
                 syncing={syncing}
                 saving={saving}
@@ -65,7 +66,8 @@ export default function App() {
             element={
               <MealPage
                 meal="Almoco"
-                quantities={quantities}
+                items={catalog.Almoco.items}
+                quantities={catalog.Almoco.quantities}
                 loading={loading}
                 syncing={syncing}
                 saving={saving}

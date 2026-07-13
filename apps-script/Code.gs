@@ -1,56 +1,56 @@
 /**
  * Cole este código em: Planilha > Extensões > Apps Script
  *
- * 1. Crie duas abas: "Cafe" e "Almoco"
- * 2. Cabeçalhos na linha 1: Nome | Qtd Necessária | Qtd que Entrou
- * 3. Preencha Nome e Qtd Necessária (iguais ao app)
- * 4. Deploy > Nova implantação > Tipo: App da Web
- *    - Executar como: Eu
- *    - Quem tem acesso: Qualquer pessoa
- * 5. Copie a URL /exec para VITE_APPS_SCRIPT_URL no .env
+ * Abas: Cafe | Almoco
+ * Colunas:
+ *   A Nome | B Qtd Necessária | C Qtd que Entrou | D Sabores (opcional)
  *
- * Após alterar este arquivo: Implantar > Gerenciar implantações > editar > Nova versão
+ * Sabores (opcional na coluna D), exemplo: Chocolate, Cenoura, Cuca
+ * Ou linhas auxiliares: Bolo::Chocolate | Bolo::Cenoura | Bolo::Cuca
+ *
+ * Deploy: App da Web, executar como Eu, acesso Qualquer pessoa.
+ * Após alterar: Implantar > Gerenciar implantações > Nova versão
  */
 
 var SHEET_NAMES = ['Cafe', 'Almoco']
 
 /**
- * Execute uma vez no editor (selecione setupSheets → Executar)
- * para criar as abas e preencher Nome / Qtd Necessária.
+ * Execute uma vez no editor (setupSheets → Executar)
+ * para criar as abas com os itens iniciais.
  */
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet()
   var cafeData = [
-    ['Nome', 'Qtd Necessária', 'Qtd que Entrou'],
-    ['Açúcar', '10 kg', ''],
-    ['Café', '4 pc', ''],
-    ['Leite', '36 L', ''],
-    ['Nescau', '5 pc', ''],
-    ['Presunto', '2 kg', ''],
-    ['Queijo fatiado', '2 kg', ''],
-    ['Melancia', '4 un', ''],
-    ['Banana', '3 kg', ''],
-    ['Uva', '5 kg', ''],
-    ['Laranja', '5 kg', ''],
-    ['Bolo', '18 un', ''],
-    ['Bolo::Chocolate', 'un', ''],
-    ['Bolo::Cenoura', 'un', ''],
-    ['Bolo::Cuca', 'un', ''],
-    ['Pão', '500 un', ''],
-    ['Bandeja para café', '400 un', ''],
-    ['Copo descartável', '400 un', ''],
-    ['Guardanapos', '1 un', ''],
-    ['Luva', '1 cx', ''],
-    ['Touca', '1 pc', ''],
-    ['Máscara', '1 cx', ''],
+    ['Nome', 'Qtd Necessária', 'Qtd que Entrou', 'Sabores'],
+    ['Açúcar', '10 kg', '', ''],
+    ['Café', '4 pc', '', ''],
+    ['Leite', '36 L', '', ''],
+    ['Nescau', '5 pc', '', ''],
+    ['Presunto', '2 kg', '', ''],
+    ['Queijo fatiado', '2 kg', '', ''],
+    ['Melancia', '4 un', '', ''],
+    ['Banana', '3 kg', '', ''],
+    ['Uva', '5 kg', '', ''],
+    ['Laranja', '5 kg', '', ''],
+    ['Bolo', '18 un', '', 'Chocolate, Cenoura, Cuca'],
+    ['Bolo::Chocolate', '', '', ''],
+    ['Bolo::Cenoura', '', '', ''],
+    ['Bolo::Cuca', '', '', ''],
+    ['Pão', '500 un', '', ''],
+    ['Bandeja para café', '400 un', '', ''],
+    ['Copo descartável', '400 un', '', ''],
+    ['Guardanapos', '1 un', '', ''],
+    ['Luva', '1 cx', '', ''],
+    ['Touca', '1 pc', '', ''],
+    ['Máscara', '1 cx', '', ''],
   ]
   var almocoData = [
-    ['Nome', 'Qtd Necessária', 'Qtd que Entrou'],
-    ['Refrigerante', '40 un', ''],
-    ['Marmita 500 ml', '200 un', ''],
-    ['Marmita 750 ml', '200 un', ''],
-    ['Garfos', '400 un', ''],
-    ['Colheres', '400 un', ''],
+    ['Nome', 'Qtd Necessária', 'Qtd que Entrou', 'Sabores'],
+    ['Refrigerante', '40 un', '', ''],
+    ['Marmita 500 ml', '200 un', '', ''],
+    ['Marmita 750 ml', '200 un', '', ''],
+    ['Garfos', '400 un', '', ''],
+    ['Colheres', '400 un', '', ''],
   ]
 
   writeSheet(ss, 'Cafe', cafeData)
@@ -71,13 +71,16 @@ function doGet(e) {
     var action = (e && e.parameter && e.parameter.action) || 'get'
 
     if (action === 'get') {
-      return jsonResponse(readAllQuantities())
+      return jsonResponse(readCatalog())
     }
 
     if (action === 'set') {
-      setQuantity(e.parameter.sheet, e.parameter.nome, e.parameter.qtd != null ? String(e.parameter.qtd) : '')
-      // Devolve o estado atualizado na mesma resposta (evita 2º request)
-      var afterSet = readAllQuantities()
+      setQuantity(
+        e.parameter.sheet,
+        e.parameter.nome,
+        e.parameter.qtd != null ? String(e.parameter.qtd) : '',
+      )
+      var afterSet = readCatalog()
       afterSet.ok = true
       return jsonResponse(afterSet)
     }
@@ -90,7 +93,7 @@ function doGet(e) {
         return jsonResponse({ error: 'JSON de updates inválido' })
       }
       setQuantitiesMany(e.parameter.sheet, updates)
-      var afterMany = readAllQuantities()
+      var afterMany = readCatalog()
       afterMany.ok = true
       return jsonResponse(afterMany)
     }
@@ -111,19 +114,19 @@ function doPost(e) {
     var action = body.action || 'setMany'
 
     if (action === 'get') {
-      return jsonResponse(readAllQuantities())
+      return jsonResponse(readCatalog())
     }
 
     if (action === 'set') {
       setQuantity(body.sheet, body.nome, body.qtd != null ? String(body.qtd) : '')
-      var afterSet = readAllQuantities()
+      var afterSet = readCatalog()
       afterSet.ok = true
       return jsonResponse(afterSet)
     }
 
     if (action === 'setMany') {
       setQuantitiesMany(body.sheet, body.updates || {})
-      var afterMany = readAllQuantities()
+      var afterMany = readCatalog()
       afterMany.ok = true
       return jsonResponse(afterMany)
     }
@@ -134,25 +137,45 @@ function doPost(e) {
   }
 }
 
-function readAllQuantities() {
-  var result = { Cafe: {}, Almoco: {} }
+/** Lista completa da planilha (fonte da verdade do app). */
+function readCatalog() {
+  var result = { Cafe: { items: [] }, Almoco: { items: [] } }
   var ss = SpreadsheetApp.getActiveSpreadsheet()
 
   SHEET_NAMES.forEach(function (name) {
     var sheet = ss.getSheetByName(name)
     if (!sheet) {
-      result[name] = {}
+      result[name] = { items: [] }
       return
     }
+
     var values = sheet.getDataRange().getValues()
-    var map = {}
+    var items = []
     for (var i = 1; i < values.length; i++) {
       var rowName = String(values[i][0] || '').trim()
       if (!rowName) continue
-      var entered = values[i][2]
-      map[rowName] = entered === '' || entered == null ? '' : String(entered)
+
+      var qtdNecessaria =
+        values[i][1] === '' || values[i][1] == null
+          ? ''
+          : String(values[i][1]).trim()
+      var qtdEntrou =
+        values[i][2] === '' || values[i][2] == null
+          ? ''
+          : String(values[i][2]).trim()
+      var sabores =
+        values[i].length > 3 && values[i][3] != null && values[i][3] !== ''
+          ? String(values[i][3]).trim()
+          : ''
+
+      items.push({
+        nome: rowName,
+        qtdNecessaria: qtdNecessaria,
+        qtdEntrou: qtdEntrou,
+        sabores: sabores,
+      })
     }
-    result[name] = map
+    result[name] = { items: items }
   })
 
   return result
@@ -185,7 +208,7 @@ function setQuantitiesMany(sheetName, updates) {
     if (row) {
       sheet.getRange(row, 3).setValue(qtd)
     } else {
-      sheet.appendRow([nome, '', qtd])
+      sheet.appendRow([nome, '', qtd, ''])
       indexByName[nome] = sheet.getLastRow()
     }
   }

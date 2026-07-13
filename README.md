@@ -19,16 +19,16 @@ cp .env.example .env
 npm run dev
 ```
 
-## 1. Preparar a planilha
+## 1. Preparar a planilha (é o “banco”)
 
-1. Abra a planilha do Google.
-2. Crie **duas abas** com os nomes exatos: `Cafe` e `Almoco`.
-3. Na linha 1 de cada aba, use os cabeçalhos:
+A lista do site vem **100% da planilha**. Abas: `Cafe` e `Almoco`.
 
-| Nome | Qtd Necessária | Qtd que Entrou |
-|------|----------------|----------------|
+| Nome | Qtd Necessária | Qtd que Entrou | Sabores (opcional) |
+|------|----------------|----------------|--------------------|
 
-4. Preencha as linhas conforme [`apps-script/PLANILHA.md`](apps-script/PLANILHA.md).
+Detalhes em [`apps-script/PLANILHA.md`](apps-script/PLANILHA.md).
+
+Ao adicionar um item novo na planilha, ele aparece no site no próximo sync (abrir a tela, botão atualizar ou a cada 30s).
 
 ## 2. Publicar o Apps Script
 

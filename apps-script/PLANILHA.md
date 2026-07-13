@@ -1,32 +1,29 @@
-# Dados iniciais para as abas Cafe e Almoco
-# Cole na planilha (linha 1 = cabeçalho)
+# Planilha = banco de dados do app
 
-# === Aba: Cafe ===
-# Nome	Qtd Necessária	Qtd que Entrou
-# Açúcar	10 kg	
-# Café	4 pc	
-# Leite	36 L	
-# Nescau	5 pc	
-# Presunto	2 kg	
-# Queijo fatiado	2 kg	
-# Melancia	4 un	
-# Banana	3 kg	
-# Uva	5 kg	
-# Laranja	5 kg	
-# Bolo	18 un	
-# Sabores bolo	Chocolate / Cenoura / Cuca	
-# Pão	500 un	
-# Bandeja para café	400 un	
-# Copo descartável	400 un	
-# Guardanapos		
-# Luva	1 cx	
-# Touca	1 pc	
-# Máscara	1 cx	
+Abas obrigatórias: `Cafe` e `Almoco`
 
-# === Aba: Almoco ===
-# Nome	Qtd Necessária	Qtd que Entrou
-# Refrigerante	40 un	
-# Marmita 500 ml	200 un	
-# Marmita 750 ml	200 un	
-# Garfos	400 un	
-# Colheres	400 un	
+## Colunas
+
+| A Nome | B Qtd Necessária | C Qtd que Entrou | D Sabores (opcional) |
+|--------|------------------|------------------|----------------------|
+| Açúcar | 10 kg | | |
+| Bolo | 18 un | | Chocolate, Cenoura, Cuca |
+| Leite | 36 L | | |
+
+- **Nome** e **Qtd Necessária**: o site lista exatamente o que estiver aqui.
+- **Qtd que Entrou**: preenchida pelo app ao contribuir (não edite para diminuir pelo site).
+- **Sabores**: opcional; use vírgula. Ex.: `Chocolate, Cenoura, Cuca`.
+
+## Sabores (alternativa)
+
+Além da coluna D, pode criar linhas auxiliares:
+
+- `Bolo::Chocolate`
+- `Bolo::Cenoura`
+- `Bolo::Cuca`
+
+Essas linhas não aparecem como item separado; viram opções de radio do `Bolo`.
+
+## Unidades
+
+Use no campo B: `kg`, `L`, `un`, `pc`, `cx`, `ml` — o app segue o mesmo padrão no lançamento.

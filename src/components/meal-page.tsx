@@ -5,16 +5,16 @@ import { IngredientsTable } from '@/components/ingredients-table'
 import { Button } from '@/components/ui/button'
 import {
   getItemTotal,
-  INGREDIENTS,
   MEAL_LABELS,
   parseRequiredQty,
+  type Ingredient,
   type MealKey,
 } from '@/data/ingredients'
-import type { QuantitiesMap } from '@/lib/api'
 
 type MealPageProps = {
   meal: MealKey
-  quantities: QuantitiesMap
+  items: Ingredient[]
+  quantities: Record<string, string>
   loading: boolean
   syncing: boolean
   saving: boolean
@@ -37,27 +37,28 @@ function formatSynced(date: Date | null): string {
 }
 
 function ProgressSummary({
-  meal,
+  items,
   quantities,
 }: {
-  meal: MealKey
+  items: Ingredient[]
   quantities: Record<string, string>
 }) {
-  const items = INGREDIENTS[meal].filter((item) => item.editavel !== false)
-  const complete = items.filter((item) => {
+  const editable = items.filter((item) => item.editavel !== false)
+  const complete = editable.filter((item) => {
     const required = parseRequiredQty(item.qtdNecessaria)
     const got = getItemTotal(item, quantities)
     if (required == null) return got > 0
     return got >= required
   }).length
 
-  const pct = items.length === 0 ? 0 : Math.round((complete / items.length) * 100)
+  const pct =
+    editable.length === 0 ? 0 : Math.round((complete / editable.length) * 100)
 
   return (
     <div className="rounded-xl border bg-muted/40 px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2 text-sm">
         <span className="font-medium">
-          {complete} de {items.length} completos
+          {complete} de {editable.length} completos
         </span>
         <span className="tabular-nums text-muted-foreground">{pct}%</span>
       </div>
@@ -86,6 +87,7 @@ function LoadingOverlay({ message }: { message: string }) {
 
 export function MealPage({
   meal,
+  items,
   quantities,
   loading,
   syncing,
@@ -95,7 +97,6 @@ export function MealPage({
   onRefresh,
   onSaveMany,
 }: MealPageProps) {
-  const items = INGREDIENTS[meal]
   const initialLoading = !lastSyncedAt && (loading || syncing)
   const showOverlay = initialLoading
 
@@ -136,22 +137,29 @@ export function MealPage({
           </Button>
         </div>
 
-        <ProgressSummary meal={meal} quantities={quantities[meal]} />
-      </div> 
+        <ProgressSummary items={items} quantities={quantities} />
+      </div>
 
       {error ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error} 
+          {error}
         </div>
       ) : null}
 
-      <IngredientsTable
-        meal={meal}
-        items={items}
-        quantities={quantities[meal]}
-        disabled={loading || syncing || saving}
-        onSaveMany={onSaveMany}
-      />
+      {!showOverlay && items.length === 0 ? (
+        <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+          Nenhum item na planilha desta aba. Adicione linhas em{' '}
+          <strong>{meal}</strong> (Nome | Qtd Necessária | Qtd que Entrou).
+        </div>
+      ) : (
+        <IngredientsTable
+          meal={meal}
+          items={items}
+          quantities={quantities}
+          disabled={loading || syncing || saving}
+          onSaveMany={onSaveMany}
+        />
+      )}
     </div>
   )
 }
