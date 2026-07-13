@@ -1,9 +1,10 @@
-import { Coffee, UtensilsCrossed } from 'lucide-react'
+import { Coffee, LayoutDashboard, UtensilsCrossed } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
 
 const tabs = [
+  { title: 'Resumo', to: '/', icon: LayoutDashboard },
   { title: 'Café', to: '/cafe', icon: Coffee },
   { title: 'Almoço', to: '/almoco', icon: UtensilsCrossed },
 ]
@@ -17,7 +18,7 @@ export function MobileBottomNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Navegação principal"
     >
-      <div className="grid h-16 grid-cols-2">
+      <div className="grid h-16 grid-cols-3">
         {tabs.map((tab) => {
           const active = location.pathname === tab.to
           return (

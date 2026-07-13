@@ -4,12 +4,12 @@ import { toast } from 'sonner'
 import {
   EMPTY_CATALOG,
   type CatalogMap,
-  type MealKey,
 } from '@/data/ingredients'
 import {
   fetchCatalog,
   isApiConfigured,
-  updateQuantities,
+  submitContribution,
+  type ContributePayload,
 } from '@/lib/api'
 
 const POLL_MS = 30_000
@@ -82,24 +82,22 @@ export function useCatalog() {
 
   useEffect(() => {
     if (!configured) return
-
     const id = window.setInterval(() => {
       void refresh(true)
     }, POLL_MS)
-
     return () => window.clearInterval(id)
   }, [configured, refresh])
 
-  const setEnteredMany = useCallback(
-    async (sheet: MealKey, updates: Record<string, string>) => {
-      const entries = Object.entries(updates)
-      if (entries.length === 0) return
-
+  const contribute = useCallback(
+    async (payload: ContributePayload) => {
       setCatalog((prev) => ({
         ...prev,
-        [sheet]: {
-          ...prev[sheet],
-          quantities: { ...prev[sheet].quantities, ...updates },
+        [payload.sheet]: {
+          ...prev[payload.sheet],
+          quantities: {
+            ...prev[payload.sheet].quantities,
+            ...payload.updates,
+          },
         },
       }))
       setLastSyncedAt(new Date())
@@ -111,7 +109,7 @@ export function useCatalog() {
 
       try {
         setSaving(true)
-        const data = await updateQuantities(sheet, updates)
+        const data = await submitContribution(payload)
         setCatalog(data)
         setLastSyncedAt(new Date())
         setError(null)
@@ -137,9 +135,8 @@ export function useCatalog() {
     error,
     configured,
     refresh,
-    setEnteredMany,
+    contribute,
   }
 }
 
-/** Alias para compatibilidade */
 export const useQuantities = useCatalog

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { DashboardPage } from '@/components/dashboard-page'
 import { MealPage } from '@/components/meal-page'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { Separator } from '@/components/ui/separator'
@@ -21,7 +22,7 @@ export default function App() {
     lastSyncedAt,
     error,
     refresh,
-    setEnteredMany,
+    contribute,
   } = useCatalog()
 
   const handleRefresh = useCallback(() => {
@@ -43,7 +44,7 @@ export default function App() {
           </span>
         </header>
         <Routes>
-          <Route path="/" element={<Navigate to="/cafe" replace />} />
+          <Route path="/" element={<DashboardPage catalog={catalog} />} />
           <Route
             path="/cafe"
             element={
@@ -57,7 +58,7 @@ export default function App() {
                 lastSyncedAt={lastSyncedAt}
                 error={error}
                 onRefresh={handleRefresh}
-                onSaveMany={setEnteredMany}
+                onContribute={contribute}
               />
             }
           />
@@ -74,11 +75,11 @@ export default function App() {
                 lastSyncedAt={lastSyncedAt}
                 error={error}
                 onRefresh={handleRefresh}
-                onSaveMany={setEnteredMany}
+                onContribute={contribute}
               />
             }
           />
-          <Route path="*" element={<Navigate to="/cafe" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <MobileBottomNav />
       </SidebarInset>

@@ -1,29 +1,22 @@
 # Planilha = banco de dados do app
 
-Abas obrigatórias: `Cafe` e `Almoco`
+Abas: `Cafe` e `Almoco`
 
-## Colunas
+| A Nome | B Qtd Necessária | C Qtd que Entrou | D Contribuições | E Sabores (opcional) |
+|--------|------------------|------------------|-----------------|----------------------|
+| Café | 4 pc | 3 pct | Felipe - Zimbros - 3pct | |
+| Bolo | 18 un | | | Chocolate, Cenoura, Cuca |
 
-| A Nome | B Qtd Necessária | C Qtd que Entrou | D Sabores (opcional) |
-|--------|------------------|------------------|----------------------|
-| Açúcar | 10 kg | | |
-| Bolo | 18 un | | Chocolate, Cenoura, Cuca |
-| Leite | 36 L | | |
+## Coluna D — contribuições (mesma célula, uma por linha)
 
-- **Nome** e **Qtd Necessária**: o site lista exatamente o que estiver aqui.
-- **Qtd que Entrou**: preenchida pelo app ao contribuir (não edite para diminuir pelo site).
-- **Sabores**: opcional; use vírgula. Ex.: `Chocolate, Cenoura, Cuca`.
+```
+Felipe - Zimbros - 3pct
+Joao - José Amândio - 2pct
+```
 
-## Sabores (alternativa)
+O app **acrescenta** linhas ao contribuir; não apague o histórico.
 
-Além da coluna D, pode criar linhas auxiliares:
+## Congregações
 
-- `Bolo::Chocolate`
-- `Bolo::Cenoura`
-- `Bolo::Cuca`
-
-Essas linhas não aparecem como item separado; viram opções de radio do `Bolo`.
-
-## Unidades
-
-Use no campo B: `kg`, `L`, `un`, `pc`, `cx`, `ml` — o app segue o mesmo padrão no lançamento.
+- Bombas → texto: "Felipe **de** Bombas contribuiu…"
+- José Amândio / Zimbros → "**do** …"

@@ -1,4 +1,10 @@
+import { useMemo, useState } from 'react'
+import { Plus, Search } from 'lucide-react'
+
+import { ContributeDialog } from '@/components/contribute-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -7,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ContributeForm } from '@/components/contribute-form'
 import {
   formatQty,
   getItemTotal,
@@ -17,6 +22,7 @@ import {
   type Ingredient,
   type MealKey,
 } from '@/data/ingredients'
+import type { ContributePayload } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 type IngredientsTableProps = {
@@ -24,10 +30,7 @@ type IngredientsTableProps = {
   items: Ingredient[]
   quantities: Record<string, string>
   disabled?: boolean
-  onSaveMany: (
-    meal: MealKey,
-    updates: Record<string, string>,
-  ) => Promise<void> | void
+  onContribute: (payload: ContributePayload) => Promise<void> | void
 }
 
 function StatusBadge({
@@ -41,14 +44,8 @@ function StatusBadge({
   const unit = parseUnit(item.qtdNecessaria)
   const integer = isIntegerUnit(unit)
 
-  if (total <= 0) {
-    return <Badge variant="outline">Pendente</Badge>
-  }
-
-  if (required == null) {
-    return <Badge variant="secondary">Registrado</Badge>
-  }
-
+  if (total <= 0) return <Badge variant="outline">Pendente</Badge>
+  if (required == null) return <Badge variant="secondary">Registrado</Badge>
   if (total >= required) {
     return (
       <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
@@ -56,32 +53,27 @@ function StatusBadge({
       </Badge>
     )
   }
-
-  const missing = required - total
   return (
     <Badge variant="destructive">
-      Falta {formatQty(missing, unit, integer)}
+      Falta {formatQty(required - total, unit, integer)}
     </Badge>
   )
 }
 
 function IngredientCard({
-  meal,
   item,
   quantities,
   disabled,
-  onSaveMany,
+  onContributeClick,
 }: {
-  meal: MealKey
   item: Ingredient
   quantities: Record<string, string>
   disabled?: boolean
-  onSaveMany: (
-    meal: MealKey,
-    updates: Record<string, string>,
-  ) => Promise<void> | void
+  onContributeClick: (item: Ingredient) => void
 }) {
   const total = getItemTotal(item, quantities)
+  const unit = parseUnit(item.qtdNecessaria)
+  const integer = isIntegerUnit(unit)
   const required = parseRequiredQty(item.qtdNecessaria)
   const incomplete = required != null && total < required
 
@@ -101,17 +93,25 @@ function IngredientCard({
               {item.qtdNecessaria || '—'}
             </span>
           </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Já entrou:{' '}
+            <span className="font-medium text-foreground">
+              {formatQty(total, unit, integer)}
+            </span>
+          </p>
         </div>
         <StatusBadge item={item} total={total} />
       </div>
 
-      <ContributeForm
-        meal={meal}
-        item={item}
-        quantities={quantities}
+      <Button
+        type="button"
+        className="h-11 w-full touch-manipulation"
         disabled={disabled}
-        onSaveMany={onSaveMany}
-      />
+        onClick={() => onContributeClick(item)}
+      >
+        <Plus className="size-4" />
+        Contribuir
+      </Button>
     </article>
   )
 }
@@ -121,71 +121,117 @@ export function IngredientsTable({
   items,
   quantities,
   disabled,
-  onSaveMany,
+  onContribute,
 }: IngredientsTableProps) {
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Ingredient | null>(null)
+  const [open, setOpen] = useState(false)
+
   const editableItems = items.filter((item) => item.editavel !== false)
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return editableItems
+    return editableItems.filter((item) => item.nome.toLowerCase().includes(q))
+  }, [editableItems, search])
+
+  function openContribute(item: Ingredient) {
+    setSelected(item)
+    setOpen(true)
+  }
 
   return (
     <>
-      <div className="flex flex-col gap-3 md:hidden">
-        {editableItems.map((item) => (
-          <IngredientCard
-            key={item.nome}
-            meal={meal}
-            item={item}
-            quantities={quantities}
-            disabled={disabled}
-            onSaveMany={onSaveMany}
-          />
-        ))}
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar ingrediente…"
+          className="h-11 pl-9 text-base"
+        />
       </div>
 
-      <div className="hidden overflow-x-auto rounded-lg border md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-36">Nome</TableHead>
-              <TableHead className="min-w-28">Qtd necessária</TableHead>
-              <TableHead className="min-w-[22rem]">Contribuir</TableHead>
-              <TableHead className="w-36">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {editableItems.map((item) => {
-              const total = getItemTotal(item, quantities)
-              const required = parseRequiredQty(item.qtdNecessaria)
-              const incomplete = required != null && total < required
+      {filtered.length === 0 ? (
+        <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+          Nenhum ingrediente encontrado.
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.map((item) => (
+              <IngredientCard
+                key={item.nome}
+                item={item}
+                quantities={quantities}
+                disabled={disabled}
+                onContributeClick={openContribute}
+              />
+            ))}
+          </div>
 
-              return (
-                <TableRow
-                  key={item.nome}
-                  className={cn(incomplete && 'bg-destructive/5')}
-                >
-                  <TableCell className="align-top font-medium">
-                    {item.nome}
-                  </TableCell>
-                  <TableCell className="align-top text-muted-foreground">
-                    {item.qtdNecessaria || '—'}
-                  </TableCell>
-                  <TableCell className="align-top py-3">
-                    <ContributeForm
-                      meal={meal}
-                      item={item}
-                      quantities={quantities}
-                      disabled={disabled}
-                      compact
-                      onSaveMany={onSaveMany}
-                    />
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <StatusBadge item={item} total={total} />
-                  </TableCell>
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Qtd necessária</TableHead>
+                  <TableHead>Já entrou</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-36" />
                 </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((item) => {
+                  const total = getItemTotal(item, quantities)
+                  const unit = parseUnit(item.qtdNecessaria)
+                  const integer = isIntegerUnit(unit)
+                  const required = parseRequiredQty(item.qtdNecessaria)
+                  const incomplete = required != null && total < required
+
+                  return (
+                    <TableRow
+                      key={item.nome}
+                      className={cn(incomplete && 'bg-destructive/5')}
+                    >
+                      <TableCell className="font-medium">{item.nome}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.qtdNecessaria || '—'}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatQty(total, unit, integer)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge item={item} total={total} />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          disabled={disabled}
+                          onClick={() => openContribute(item)}
+                        >
+                          <Plus className="size-4" />
+                          Contribuir
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      <ContributeDialog
+        open={open}
+        onOpenChange={setOpen}
+        meal={meal}
+        item={selected}
+        quantities={quantities}
+        disabled={disabled}
+        onContribute={onContribute}
+      />
     </>
   )
 }

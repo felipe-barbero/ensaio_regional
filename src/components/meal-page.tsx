@@ -4,12 +4,12 @@ import { useEffect } from 'react'
 import { IngredientsTable } from '@/components/ingredients-table'
 import { Button } from '@/components/ui/button'
 import {
-  getItemTotal,
+  mealProgress,
   MEAL_LABELS,
-  parseRequiredQty,
   type Ingredient,
   type MealKey,
 } from '@/data/ingredients'
+import type { ContributePayload } from '@/lib/api'
 
 type MealPageProps = {
   meal: MealKey
@@ -21,10 +21,7 @@ type MealPageProps = {
   lastSyncedAt: Date | null
   error: string | null
   onRefresh: () => void
-  onSaveMany: (
-    meal: MealKey,
-    updates: Record<string, string>,
-  ) => Promise<void> | void
+  onContribute: (payload: ContributePayload) => Promise<void> | void
 }
 
 function formatSynced(date: Date | null): string {
@@ -43,29 +40,22 @@ function ProgressSummary({
   items: Ingredient[]
   quantities: Record<string, string>
 }) {
-  const editable = items.filter((item) => item.editavel !== false)
-  const complete = editable.filter((item) => {
-    const required = parseRequiredQty(item.qtdNecessaria)
-    const got = getItemTotal(item, quantities)
-    if (required == null) return got > 0
-    return got >= required
-  }).length
-
-  const pct =
-    editable.length === 0 ? 0 : Math.round((complete / editable.length) * 100)
+  const progress = mealProgress(items, quantities)
 
   return (
     <div className="rounded-xl border bg-muted/40 px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2 text-sm">
         <span className="font-medium">
-          {complete} de {editable.length} completos
+          {progress.complete} de {progress.total} completos
         </span>
-        <span className="tabular-nums text-muted-foreground">{pct}%</span>
+        <span className="tabular-nums text-muted-foreground">
+          {progress.pct}%
+        </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-emerald-600 transition-[width] duration-300"
-          style={{ width: `${pct}%` }}
+          style={{ width: `${progress.pct}%` }}
         />
       </div>
     </div>
@@ -95,7 +85,7 @@ export function MealPage({
   lastSyncedAt,
   error,
   onRefresh,
-  onSaveMany,
+  onContribute,
 }: MealPageProps) {
   const initialLoading = !lastSyncedAt && (loading || syncing)
   const showOverlay = initialLoading
@@ -149,7 +139,7 @@ export function MealPage({
       {!showOverlay && items.length === 0 ? (
         <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
           Nenhum item na planilha desta aba. Adicione linhas em{' '}
-          <strong>{meal}</strong> (Nome | Qtd Necessária | Qtd que Entrou).
+          <strong>{meal}</strong>.
         </div>
       ) : (
         <IngredientsTable
@@ -157,7 +147,7 @@ export function MealPage({
           items={items}
           quantities={quantities}
           disabled={loading || syncing || saving}
-          onSaveMany={onSaveMany}
+          onContribute={onContribute}
         />
       )}
     </div>

@@ -8,7 +8,6 @@ import {
 
 type ApiMealPayload = {
   items?: SheetRow[]
-  /** Formato antigo: mapa nome → qtd */
   [key: string]: unknown
 }
 
@@ -17,6 +16,16 @@ type SyncResponse = {
   Almoco?: ApiMealPayload
   ok?: boolean
   error?: string
+}
+
+export type ContributePayload = {
+  sheet: MealKey
+  /** Item principal (recebe o log na coluna D) */
+  nome: string
+  /** Linha para coluna D */
+  logLine: string
+  /** Totais a gravar na coluna C (inclui sabores se houver) */
+  updates: Record<string, string>
 }
 
 const API_URL = import.meta.env.VITE_APPS_SCRIPT_URL as string | undefined
@@ -43,11 +52,10 @@ function isSheetRowArray(value: unknown): value is SheetRow[] {
   )
 }
 
-/** Aceita formato novo (items[]) e antigo (mapa de quantidades). */
 function normalizeCatalog(data: SyncResponse): CatalogMap {
   const result: CatalogMap = {
-    Cafe: { items: [], quantities: {} },
-    Almoco: { items: [], quantities: {} },
+    Cafe: { items: [], quantities: {}, contributions: [] },
+    Almoco: { items: [], quantities: {}, contributions: [] },
   }
 
   for (const meal of ['Cafe', 'Almoco'] as MealKey[]) {
@@ -55,11 +63,10 @@ function normalizeCatalog(data: SyncResponse): CatalogMap {
     if (!payload) continue
 
     if (isSheetRowArray(payload.items)) {
-      result[meal] = buildMealCatalog(payload.items)
+      result[meal] = buildMealCatalog(payload.items, meal)
       continue
     }
 
-    // Retrocompat: { "Açúcar": "1 kg", ... }
     if (typeof payload === 'object' && !Array.isArray(payload)) {
       const rows: SheetRow[] = Object.entries(payload)
         .filter(([key]) => key !== 'items')
@@ -69,7 +76,7 @@ function normalizeCatalog(data: SyncResponse): CatalogMap {
           qtdNecessaria: '',
           qtdEntrou: String(qtdEntrou),
         }))
-      result[meal] = buildMealCatalog(rows)
+      result[meal] = buildMealCatalog(rows, meal)
     }
   }
 
@@ -95,46 +102,24 @@ export async function fetchCatalog(): Promise<CatalogMap> {
   url.searchParams.set('action', 'get')
 
   const data = await requestJson(url.toString())
-  if (data.error) {
-    throw new Error(data.error)
-  }
+  if (data.error) throw new Error(data.error)
   return normalizeCatalog(data)
 }
 
-/** @deprecated use fetchCatalog */
-export async function fetchQuantities(): Promise<CatalogMap> {
-  return fetchCatalog()
-}
-
-/** Salva 1 ou N itens e devolve o catálogo atualizado (1 request). */
-export async function updateQuantities(
-  sheet: MealKey,
-  updates: Record<string, string>,
+export async function submitContribution(
+  payload: ContributePayload,
 ): Promise<CatalogMap> {
-  const entries = Object.entries(updates)
-  if (entries.length === 0) {
-    return fetchCatalog()
-  }
-
   const url = new URL(ensureApiUrl())
-
-  if (entries.length === 1) {
-    const [nome, qtd] = entries[0]
-    url.searchParams.set('action', 'set')
-    url.searchParams.set('sheet', sheet)
-    url.searchParams.set('nome', nome)
-    url.searchParams.set('qtd', qtd)
-  } else {
-    url.searchParams.set('action', 'setMany')
-    url.searchParams.set('sheet', sheet)
-    url.searchParams.set('updates', JSON.stringify(updates))
-  }
+  url.searchParams.set('action', 'contribute')
+  url.searchParams.set('sheet', payload.sheet)
+  url.searchParams.set('nome', payload.nome)
+  url.searchParams.set('logLine', payload.logLine)
+  url.searchParams.set('updates', JSON.stringify(payload.updates))
 
   const data = await requestJson(url.toString())
   if (data.error || data.ok === false) {
-    throw new Error(data.error ?? 'Erro ao salvar na planilha')
+    throw new Error(data.error ?? 'Erro ao salvar contribuição')
   }
-
   return normalizeCatalog(data)
 }
 

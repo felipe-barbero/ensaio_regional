@@ -1,4 +1,4 @@
-import { Coffee, UtensilsCrossed } from 'lucide-react'
+import { Coffee, LayoutDashboard, UtensilsCrossed } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import {
@@ -15,6 +15,11 @@ import {
 } from '@/components/ui/sidebar'
 
 const navItems = [
+  {
+    title: 'Resumo',
+    to: '/',
+    icon: LayoutDashboard,
+  },
   {
     title: 'Café da Manhã',
     to: '/cafe',
@@ -45,7 +50,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Refeições</SidebarGroupLabel>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
