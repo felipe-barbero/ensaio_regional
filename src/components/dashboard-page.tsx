@@ -171,9 +171,6 @@ export function DashboardPage({ catalog }: DashboardPageProps) {
                 className="border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"
               >
                 {formatContributionPhrase(entry)}
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {MEAL_LABELS[entry.meal]}
-                </span>
               </li>
             ))}
           </ul>

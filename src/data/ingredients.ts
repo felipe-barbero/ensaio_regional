@@ -124,11 +124,11 @@ export function formatLogLine(
 }
 
 export function formatContributionPhrase(entry: ContributionEntry): string {
-  const prep = congregacaoPreposition(entry.congregacao)
   const item = entry.sabor
     ? `${entry.ingredientNome} (${entry.sabor})`
     : entry.ingredientNome
-  return `${entry.pessoa} ${prep} ${entry.congregacao} contribuiu com ${entry.qtdLabel} de ${item.toLowerCase()}.`
+  const refeicao = MEAL_LABELS[entry.meal]
+  return `Deus preparou ${entry.qtdLabel} de ${item} para o ${refeicao}.`
 }
 
 export function buildMealCatalog(
