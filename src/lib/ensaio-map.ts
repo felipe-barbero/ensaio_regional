@@ -1,4 +1,4 @@
-// Sem alias `@/` nem import.meta.env: também é usado pelos scripts (tsx).
+// Converte o JSON das RPCs (snake_case) nos tipos do front
 import type {
   Contribuicao,
   EnsaioPublico,

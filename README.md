@@ -34,7 +34,8 @@ npm test
 
 1. No **SQL Editor**, rode [`supabase/migrations/001_schema.sql`](supabase/migrations/001_schema.sql).
 2. Rode [`supabase/tests/001_checks.sql`](supabase/tests/001_checks.sql): devem aparecer só mensagens `OK: ...` (é tudo desfeito no final).
-3. **Authentication → Sign In / Providers**: desative *Allow new users to sign up*.
+   - Dados de teste: [`supabase/seed/seed.sql`](supabase/seed/seed.sql); para apagar tudo: [`supabase/seed/truncate.sql`](supabase/seed/truncate.sql).
+3. **Authentication → Sign In / Providers**: desative *Allow new users to sign up* e mantenha *Anonymous sign-ins* desligado (qualquer usuário logado é admin).
 4. **Authentication → Users → Add user**: crie o login de cada admin.
 5. **Project Settings → API Keys**: copie a chave pública para `VITE_SUPABASE_ANON_KEY`.
 
@@ -56,12 +57,3 @@ A chave pública pode ficar no front. A chave `service_role`/secreta **nunca** v
 6. Na aba **Contribuições**, o admin corrige ou exclui lançamentos errados; os totais se recalculam.
 7. Depois do evento, **Encerrar ensaio**: os links continuam mostrando as listas, mas não aceitam contribuições.
 
-## Migração da planilha (histórico)
-
-Os dados do Google Sheets foram importados uma vez com:
-
-```bash
-APPS_SCRIPT_URL=... SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run import:sheets -- --data AAAA-MM-DD
-```
-
-O script ([`scripts/import-sheets.ts`](scripts/import-sheets.ts)) aceita `--dry-run` e confere, item a item, se os totais do Supabase batem com os da planilha.
