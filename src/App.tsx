@@ -6,6 +6,8 @@ import { MealPage } from '@/components/meal-page'
 import type { MealKey } from '@/data/ensaio'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { AdminLayout } from '@/pages/admin/admin-layout'
+import { EnsaioNewPage } from '@/pages/admin/ensaio-new-page'
+import { EnsaiosListPage } from '@/pages/admin/ensaios-list-page'
 import { LoginPage } from '@/pages/admin/login-page'
 import { RegioesPage } from '@/pages/admin/regioes-page'
 import { RequireAdmin } from '@/pages/admin/require-admin'
@@ -64,8 +66,8 @@ export default function App() {
       <Route path="/admin/login" element={<LoginPage />} />
       <Route path="/admin" element={<RequireAdmin />}>
         <Route element={<AdminLayout />}>
-          <Route index element={<EmConstrucao />} />
-          <Route path="ensaios/novo" element={<EmConstrucao />} />
+          <Route index element={<EnsaiosListPage />} />
+          <Route path="ensaios/novo" element={<EnsaioNewPage />} />
           <Route path="ensaios/:id" element={<EmConstrucao />} />
           <Route path="regioes" element={<RegioesPage />} />
         </Route>
