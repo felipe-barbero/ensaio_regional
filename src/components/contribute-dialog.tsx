@@ -15,9 +15,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
+  formatEntrouNecessario,
   formatNecessario,
   formatQty,
   isIntegerUnit,
+  isItemCompleto,
   itemTotal,
   parseQuantidadeInput,
   type Contribuicao,
@@ -25,6 +27,7 @@ import {
   type Igreja,
   type Item,
 } from '@/data/ensaio'
+import { lerContribuinte, salvarContribuinte } from '@/lib/contribuinte'
 import { cn } from '@/lib/utils'
 
 type ContributeDialogProps = {
@@ -34,6 +37,7 @@ type ContributeDialogProps = {
   contribuicoes: Contribuicao[]
   igrejas: Igreja[]
   disabled?: boolean
+  encerrado?: boolean
   onContribute: (input: ContribuirInput) => Promise<void>
 }
 
@@ -44,6 +48,7 @@ export function ContributeDialog({
   contribuicoes,
   igrejas,
   disabled,
+  encerrado,
   onContribute,
 }: ContributeDialogProps) {
   const [amount, setAmount] = useState('')
@@ -54,10 +59,15 @@ export function ContributeDialog({
 
   useEffect(() => {
     if (!open || !item) return
+    const salvo = lerContribuinte()
     setAmount('')
-    setPessoa('')
-    setIgrejaId('')
+    setPessoa(salvo?.pessoa ?? '')
+    // A igreja lembrada só vale se for da região deste ensaio
+    setIgrejaId(
+      salvo && igrejas.some((g) => g.id === salvo.igrejaId) ? salvo.igrejaId : '',
+    )
     setSabor(item.sabores[0] ?? '')
+    // igrejas fora das deps: não resetar o formulário a cada sync
   }, [open, item])
 
   if (!item) return null
@@ -65,6 +75,7 @@ export function ContributeDialog({
   const unitLabel = item.unidade
   const integer = isIntegerUnit(item.unidade)
   const total = itemTotal(item, contribuicoes)
+  const completo = item.qtdNecessaria != null && isItemCompleto(item, contribuicoes)
 
   async function handleSubmit() {
     if (!item) return
@@ -101,6 +112,7 @@ export function ContributeDialog({
         sabor: current.sabores.length > 0 ? sabor : null,
         quantidade,
       })
+      salvarContribuinte({ pessoa: pessoa.trim(), igrejaId })
       toast.success('Contribuição registrada')
       onOpenChange(false)
     } catch {
@@ -120,6 +132,17 @@ export function ContributeDialog({
             {formatNecessario(item)}
           </DialogDescription>
         </DialogHeader>
+
+        {encerrado ? (
+          <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            Ensaio encerrado — contribuições não são mais aceitas.
+          </p>
+        ) : completo ? (
+          <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
+            Este item já está completo ({formatEntrouNecessario(total, item)}).
+            Quer contribuir mesmo assim?
+          </p>
+        ) : null}
 
         <div className="grid gap-4 py-1">
           <div className="space-y-1.5">
@@ -239,7 +262,7 @@ export function ContributeDialog({
           </Button>
           <Button
             type="button"
-            disabled={disabled || busy}
+            disabled={disabled || busy || encerrado}
             onClick={() => void handleSubmit()}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
