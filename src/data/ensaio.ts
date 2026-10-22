@@ -125,6 +125,12 @@ export function formatNecessario(item: Item): string {
   return formatQty(item.qtdNecessaria, item.unidade)
 }
 
+/** "24.5/36 L" (entrou/necessário); só "24.5 L" se não houver necessário */
+export function formatEntrouNecessario(total: number, item: Item): string {
+  if (item.qtdNecessaria == null) return formatQty(total, item.unidade)
+  return formatQty(roundQty(total), '') + '/' + formatQty(item.qtdNecessaria, item.unidade)
+}
+
 /** Aceita vírgula decimal; null se inválido para a unidade */
 export function parseQuantidadeInput(raw: string, u: Unit): number | null {
   const normalized = raw.trim().replace(',', '.')

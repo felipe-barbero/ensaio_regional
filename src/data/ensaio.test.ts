@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 
 import {
   formatContributionPhrase,
+  formatEntrouNecessario,
   formatNecessario,
   formatQty,
   isItemCompleto,
@@ -113,4 +114,11 @@ test('parseSaboresInput apara, remove vazios e duplicados', () => {
     'Cuca',
   ])
   expect(parseSaboresInput('   ')).toEqual([])
+})
+
+test('formatEntrouNecessario', () => {
+  expect(formatEntrouNecessario(24.5, { ...acucar, qtdNecessaria: 36, unidade: 'L' })).toBe('24.5/36 L')
+  expect(formatEntrouNecessario(0.1 + 0.2, acucar)).toBe('0.3/10 kg')
+  expect(formatEntrouNecessario(10, { ...acucar, unidade: '' })).toBe('10/10')
+  expect(formatEntrouNecessario(3, { ...acucar, qtdNecessaria: null })).toBe('3 kg')
 })
