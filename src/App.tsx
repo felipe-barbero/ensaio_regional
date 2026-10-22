@@ -6,6 +6,7 @@ import { MealPage } from '@/components/meal-page'
 import type { MealKey } from '@/data/ensaio'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { AdminLayout } from '@/pages/admin/admin-layout'
+import { EnsaioDetailPage } from '@/pages/admin/ensaio-detail-page'
 import { EnsaioNewPage } from '@/pages/admin/ensaio-new-page'
 import { EnsaiosListPage } from '@/pages/admin/ensaios-list-page'
 import { LoginPage } from '@/pages/admin/login-page'
@@ -18,10 +19,6 @@ import {
 } from '@/pages/public/ensaio-layout'
 import { HomePage } from '@/pages/public/home-page'
 import { NotFoundPage } from '@/pages/public/not-found-page'
-
-function EmConstrucao() {
-  return <p className="text-sm text-muted-foreground">Em construção.</p>
-}
 
 function EnsaioResumo() {
   const { data } = useEnsaioContext()
@@ -68,7 +65,7 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route index element={<EnsaiosListPage />} />
           <Route path="ensaios/novo" element={<EnsaioNewPage />} />
-          <Route path="ensaios/:id" element={<EmConstrucao />} />
+          <Route path="ensaios/:id" element={<EnsaioDetailPage />} />
           <Route path="regioes" element={<RegioesPage />} />
         </Route>
       </Route>

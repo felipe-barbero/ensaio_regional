@@ -1,7 +1,10 @@
 import type {
+  Contribuicao,
   Ensaio,
   Igreja,
+  Item,
   MealKey,
+  Origem,
   Regiao,
   StatusEnsaio,
   Unit,
@@ -142,4 +145,170 @@ export async function copiarItens(origemId: string, destinoId: string): Promise<
 
 export async function excluirEnsaio(id: string): Promise<void> {
   await run(db().from('ensaios').delete().eq('id', id))
+}
+
+export async function getEnsaio(id: string): Promise<Ensaio> {
+  return run<Ensaio>(db().from('ensaios').select(ENSAIO_COLS).eq('id', id).single())
+}
+
+export async function atualizarEnsaio(
+  id: string,
+  patch: Partial<{ nome: string; slug: string; data: string; status: StatusEnsaio }>,
+): Promise<void> {
+  await run(db().from('ensaios').update(patch).eq('id', id))
+}
+
+// ---------------------------------------------------------------------------
+// Itens
+// ---------------------------------------------------------------------------
+
+export type ItemInput = {
+  refeicao: MealKey
+  nome: string
+  qtdNecessaria: number | null
+  unidade: Unit
+  sabores: string[]
+}
+
+type ItemRow = {
+  id: string
+  refeicao: MealKey
+  nome: string
+  qtd_necessaria: number | null
+  unidade: Unit
+  sabores: string[]
+  ordem: number
+}
+
+function toItem(r: ItemRow): Item {
+  return {
+    id: r.id,
+    refeicao: r.refeicao,
+    nome: r.nome,
+    qtdNecessaria: r.qtd_necessaria == null ? null : Number(r.qtd_necessaria),
+    unidade: r.unidade,
+    sabores: r.sabores ?? [],
+    ordem: r.ordem,
+  }
+}
+
+function itemColumns(input: ItemInput) {
+  return {
+    refeicao: input.refeicao,
+    nome: input.nome.trim(),
+    qtd_necessaria: input.qtdNecessaria,
+    unidade: input.unidade,
+    sabores: input.sabores,
+  }
+}
+
+const ITEM_COLS = 'id, refeicao, nome, qtd_necessaria, unidade, sabores, ordem'
+
+export async function listItens(ensaioId: string): Promise<Item[]> {
+  const rows = await run<ItemRow[]>(
+    db()
+      .from('itens')
+      .select(ITEM_COLS)
+      .eq('ensaio_id', ensaioId)
+      .order('refeicao')
+      .order('ordem')
+      .order('nome'),
+  )
+  return rows.map(toItem)
+}
+
+export async function criarItem(ensaioId: string, input: ItemInput): Promise<Item> {
+  const ultimos = await run<{ ordem: number }[]>(
+    db()
+      .from('itens')
+      .select('ordem')
+      .eq('ensaio_id', ensaioId)
+      .eq('refeicao', input.refeicao)
+      .order('ordem', { ascending: false })
+      .limit(1),
+  )
+  const ordem = (ultimos[0]?.ordem ?? -1) + 1
+  const row = await run<ItemRow>(
+    db()
+      .from('itens')
+      .insert({ ...itemColumns(input), ensaio_id: ensaioId, ordem })
+      .select(ITEM_COLS)
+      .single(),
+  )
+  return toItem(row)
+}
+
+export async function atualizarItem(id: string, input: ItemInput): Promise<void> {
+  await run(db().from('itens').update(itemColumns(input)).eq('id', id))
+}
+
+export async function excluirItem(id: string): Promise<void> {
+  await run(db().from('itens').delete().eq('id', id))
+}
+
+/** ordem = posição na lista */
+export async function reordenarItens(idsEmOrdem: string[]): Promise<void> {
+  await Promise.all(
+    idsEmOrdem.map((id, ordem) => run(db().from('itens').update({ ordem }).eq('id', id))),
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Contribuições
+// ---------------------------------------------------------------------------
+
+type ContribuicaoRow = {
+  id: string
+  item_id: string
+  igreja_id: string | null
+  pessoa: string
+  sabor: string | null
+  quantidade: number
+  origem: Origem
+  criado_em: string
+  igreja: { nome: string } | null
+}
+
+export async function listContribuicoes(ensaioId: string): Promise<Contribuicao[]> {
+  const rows = await run<ContribuicaoRow[]>(
+    db()
+      .from('contribuicoes')
+      .select(
+        'id, item_id, igreja_id, pessoa, sabor, quantidade, origem, criado_em, igreja:igrejas(nome), itens!inner(ensaio_id)',
+      )
+      .eq('itens.ensaio_id', ensaioId)
+      .order('criado_em', { ascending: false }),
+  )
+  return rows.map((r) => ({
+    id: r.id,
+    itemId: r.item_id,
+    igrejaId: r.igreja_id,
+    igrejaNome: r.igreja?.nome ?? null,
+    pessoa: r.pessoa,
+    sabor: r.sabor,
+    quantidade: Number(r.quantidade),
+    origem: r.origem,
+    criadoEm: r.criado_em,
+  }))
+}
+
+export async function atualizarContribuicao(
+  id: string,
+  patch: { pessoa: string; igrejaId: string | null; sabor: string | null; quantidade: number },
+): Promise<void> {
+  await run(
+    db()
+      .from('contribuicoes')
+      .update({
+        pessoa: patch.pessoa.trim(),
+        igreja_id: patch.igrejaId,
+        sabor: patch.sabor,
+        quantidade: patch.quantidade,
+      })
+      .eq('id', id),
+  )
+}
+
+export async function excluirContribuicao(id: string): Promise<void> {
+  await run(db().from('contribuicoes').delete().eq('id', id))
 }

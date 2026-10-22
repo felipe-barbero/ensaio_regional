@@ -8,6 +8,7 @@ import {
   itemFalta,
   itemTotal,
   mealProgress,
+  parseSaboresInput,
   parseQuantidadeInput,
   saborTotal,
   type Contribuicao,
@@ -103,4 +104,13 @@ test('formatContributionPhrase', () => {
   expect(formatContributionPhrase(c('b', 3, 'Chocolate'), bolo)).toBe(
     'Deus preparou 3un de Bolo (Chocolate) para o Café da Manhã.',
   )
+})
+
+test('parseSaboresInput apara, remove vazios e duplicados', () => {
+  expect(parseSaboresInput(' Chocolate, Cenoura,, chocolate ,Cuca ')).toEqual([
+    'Chocolate',
+    'Cenoura',
+    'Cuca',
+  ])
+  expect(parseSaboresInput('   ')).toEqual([])
 })

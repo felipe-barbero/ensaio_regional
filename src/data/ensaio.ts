@@ -141,3 +141,17 @@ export function formatContributionPhrase(c: Contribuicao, item: Item): string {
   const nome = c.sabor ? `${item.nome} (${c.sabor})` : item.nome
   return `Deus preparou ${qty} de ${nome} para o ${MEAL_LABELS[item.refeicao]}.`
 }
+
+/** "Chocolate, Cenoura" → ['Chocolate', 'Cenoura'] (sem vazios nem repetidos) */
+export function parseSaboresInput(raw: string): string[] {
+  const vistos = new Set<string>()
+  const sabores: string[] = []
+  for (const parte of raw.split(',')) {
+    const sabor = parte.trim()
+    const chave = sabor.toLocaleLowerCase('pt-BR')
+    if (!sabor || vistos.has(chave)) continue
+    vistos.add(chave)
+    sabores.push(sabor)
+  }
+  return sabores
+}
