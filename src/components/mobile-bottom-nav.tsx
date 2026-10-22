@@ -1,16 +1,11 @@
-import { Coffee, LayoutDashboard, UtensilsCrossed } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
+import { ensaioNavItems } from '@/components/app-sidebar'
 import { cn } from '@/lib/utils'
 
-const tabs = [
-  { title: 'Resumo', to: '/', icon: LayoutDashboard },
-  { title: 'Café', to: '/cafe', icon: Coffee },
-  { title: 'Almoço', to: '/almoco', icon: UtensilsCrossed },
-]
-
-export function MobileBottomNav() {
+export function MobileBottomNav({ slug }: { slug: string }) {
   const location = useLocation()
+  const tabs = ensaioNavItems(slug)
 
   return (
     <nav
@@ -36,7 +31,7 @@ export function MobileBottomNav() {
                 className={cn('size-5', active && 'stroke-[2.5]')}
                 aria-hidden
               />
-              <span>{tab.title}</span>
+              <span>{tab.short}</span>
             </Link>
           )
         })}

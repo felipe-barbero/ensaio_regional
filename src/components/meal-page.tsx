@@ -6,22 +6,24 @@ import { Button } from '@/components/ui/button'
 import {
   mealProgress,
   MEAL_LABELS,
-  type Ingredient,
+  type Contribuicao,
+  type ContribuirInput,
+  type EnsaioPublico,
+  type Item,
   type MealKey,
-} from '@/data/ingredients'
-import type { ContributePayload } from '@/lib/api'
+} from '@/data/ensaio'
 
 type MealPageProps = {
   meal: MealKey
-  items: Ingredient[]
-  quantities: Record<string, string>
+  data: EnsaioPublico
+  encerrado: boolean
   loading: boolean
   syncing: boolean
   saving: boolean
   lastSyncedAt: Date | null
   error: string | null
   onRefresh: () => void
-  onContribute: (payload: ContributePayload) => Promise<void> | void
+  onContribute: (input: ContribuirInput) => Promise<void>
 }
 
 function formatSynced(date: Date | null): string {
@@ -35,12 +37,12 @@ function formatSynced(date: Date | null): string {
 
 function ProgressSummary({
   items,
-  quantities,
+  contribuicoes,
 }: {
-  items: Ingredient[]
-  quantities: Record<string, string>
+  items: Item[]
+  contribuicoes: Contribuicao[]
 }) {
-  const progress = mealProgress(items, quantities)
+  const progress = mealProgress(items, contribuicoes)
 
   return (
     <div className="rounded-xl border bg-muted/40 px-4 py-3">
@@ -77,8 +79,8 @@ function LoadingOverlay({ message }: { message: string }) {
 
 export function MealPage({
   meal,
-  items,
-  quantities,
+  data,
+  encerrado,
   loading,
   syncing,
   saving,
@@ -87,8 +89,8 @@ export function MealPage({
   onRefresh,
   onContribute,
 }: MealPageProps) {
-  const initialLoading = !lastSyncedAt && (loading || syncing)
-  const showOverlay = initialLoading
+  const items = data.itens.filter((i) => i.refeicao === meal)
+  const showOverlay = !lastSyncedAt && (loading || syncing)
 
   useEffect(() => {
     onRefresh()
@@ -127,7 +129,7 @@ export function MealPage({
           </Button>
         </div>
 
-        <ProgressSummary items={items} quantities={quantities} />
+        <ProgressSummary items={items} contribuicoes={data.contribuicoes} />
       </div>
 
       {error ? (
@@ -138,15 +140,15 @@ export function MealPage({
 
       {!showOverlay && items.length === 0 ? (
         <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          Nenhum item na planilha desta aba. Adicione linhas em{' '}
-          <strong>{meal}</strong>.
+          Nenhum item cadastrado nesta refeição.
         </div>
       ) : (
         <IngredientsTable
-          meal={meal}
-          items={items}
-          quantities={quantities}
+          itens={items}
+          contribuicoes={data.contribuicoes}
+          igrejas={data.igrejas}
           disabled={loading || syncing || saving}
+          encerrado={encerrado}
           onContribute={onContribute}
         />
       )}

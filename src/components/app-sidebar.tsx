@@ -13,38 +13,31 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import type { Ensaio } from '@/data/ensaio'
+import { formatData } from '@/lib/format'
 
-const navItems = [
-  {
-    title: 'Resumo',
-    to: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Café da Manhã',
-    to: '/cafe',
-    icon: Coffee,
-  },
-  {
-    title: 'Almoço',
-    to: '/almoco',
-    icon: UtensilsCrossed,
-  },
-]
+export function ensaioNavItems(slug: string) {
+  return [
+    { title: 'Resumo', short: 'Resumo', to: `/e/${slug}`, icon: LayoutDashboard },
+    { title: 'Café da Manhã', short: 'Café', to: `/e/${slug}/cafe`, icon: Coffee },
+    { title: 'Almoço', short: 'Almoço', to: `/e/${slug}/almoco`, icon: UtensilsCrossed },
+  ]
+}
 
-export function AppSidebar() {
+export function AppSidebar({ ensaio }: { ensaio: Ensaio }) {
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
+  const navItems = ensaioNavItems(ensaio.slug)
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-semibold tracking-tight">
-            Ensaio Regional
+            {ensaio.nome}
           </span>
           <span className="text-xs text-muted-foreground">
-            Controle de ingredientes
+            {ensaio.regiao.nome} · {formatData(ensaio.data)}
           </span>
         </div>
       </SidebarHeader>

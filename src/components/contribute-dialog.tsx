@@ -15,55 +15,40 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
-  CONGREGACOES,
-  flavorStorageKey,
-  formatLogLine,
+  formatNecessario,
   formatQty,
-  getFlavorQty,
-  getItemTotal,
   isIntegerUnit,
-  parseUnit,
-  type Congregacao,
-  type Ingredient,
-  type MealKey,
-} from '@/data/ingredients'
-import type { ContributePayload } from '@/lib/api'
+  itemTotal,
+  parseQuantidadeInput,
+  type Contribuicao,
+  type ContribuirInput,
+  type Igreja,
+  type Item,
+} from '@/data/ensaio'
 import { cn } from '@/lib/utils'
 
 type ContributeDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  meal: MealKey
-  item: Ingredient | null
-  quantities: Record<string, string>
+  item: Item | null
+  contribuicoes: Contribuicao[]
+  igrejas: Igreja[]
   disabled?: boolean
-  onContribute: (payload: ContributePayload) => Promise<void> | void
-}
-
-function parseContributeInput(raw: string, integer: boolean): number | null {
-  const normalized = raw.trim().replace(',', '.')
-  if (!normalized) return null
-  const value = Number(normalized)
-  if (!Number.isFinite(value) || value <= 0) return null
-  if (integer) {
-    if (!Number.isInteger(value)) return null
-    return value
-  }
-  return Math.round(value * 1000) / 1000
+  onContribute: (input: ContribuirInput) => Promise<void>
 }
 
 export function ContributeDialog({
   open,
   onOpenChange,
-  meal,
   item,
-  quantities,
+  contribuicoes,
+  igrejas,
   disabled,
   onContribute,
 }: ContributeDialogProps) {
   const [amount, setAmount] = useState('')
   const [pessoa, setPessoa] = useState('')
-  const [congregacao, setCongregacao] = useState<Congregacao | ''>('')
+  const [igrejaId, setIgrejaId] = useState('')
   const [sabor, setSabor] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -71,23 +56,22 @@ export function ContributeDialog({
     if (!open || !item) return
     setAmount('')
     setPessoa('')
-    setCongregacao('')
-    setSabor(item.sabores?.[0] ?? '')
+    setIgrejaId('')
+    setSabor(item.sabores[0] ?? '')
   }, [open, item])
 
   if (!item) return null
 
-  const unit = parseUnit(item.qtdNecessaria)
-  const integer = isIntegerUnit(unit)
-  const unitLabel = unit || ''
-  const total = getItemTotal(item, quantities)
+  const unitLabel = item.unidade
+  const integer = isIntegerUnit(item.unidade)
+  const total = itemTotal(item, contribuicoes)
 
   async function handleSubmit() {
     if (!item) return
     const current = item
 
-    const add = parseContributeInput(amount, integer)
-    if (add == null) {
+    const quantidade = parseQuantidadeInput(amount, current.unidade)
+    if (quantidade == null) {
       toast.error(
         integer
           ? `Informe um número inteiro maior que zero${unitLabel ? ` (${unitLabel})` : ''}`
@@ -99,66 +83,23 @@ export function ContributeDialog({
       toast.error('Informe o seu nome')
       return
     }
-    if (!congregacao) {
+    if (!igrejaId) {
       toast.error('Selecione a sua comum congregação')
       return
     }
-    if (current.sabores?.length && !sabor) {
+    if (current.sabores.length > 0 && !sabor) {
       toast.error('Selecione o sabor')
       return
     }
 
-    const updates: Record<string, string> = {}
-
-    if (current.sabores?.length) {
-      const currentFlavor = getFlavorQty(current, sabor, quantities)
-      const nextFlavor = currentFlavor + add
-      updates[flavorStorageKey(current.nome, sabor)] = formatQty(
-        nextFlavor,
-        unit,
-        integer,
-      )
-
-      const flavorSumOthers = current.sabores.reduce((sum, s) => {
-        if (s === sabor) return sum
-        return sum + getFlavorQty(current, s, quantities)
-      }, 0)
-      const hasAnyFlavor = current.sabores.some(
-        (s) => getFlavorQty(current, s, quantities) > 0,
-      )
-      const nextTotal = hasAnyFlavor
-        ? flavorSumOthers + nextFlavor
-        : total + add
-
-      if (nextTotal < total || nextFlavor < currentFlavor) {
-        toast.error('Não é permitido diminuir a quantidade já registrada')
-        return
-      }
-      updates[current.nome] = formatQty(nextTotal, unit, integer)
-    } else {
-      const next = total + add
-      if (next < total) {
-        toast.error('Não é permitido diminuir a quantidade já registrada')
-        return
-      }
-      updates[current.nome] = formatQty(next, unit, integer)
-    }
-
-    const logLine = formatLogLine(
-      pessoa.trim(),
-      congregacao,
-      add,
-      unit,
-      integer,
-    )
-
     setBusy(true)
     try {
       await onContribute({
-        sheet: meal,
-        nome: current.nome,
-        logLine,
-        updates,
+        itemId: current.id,
+        igrejaId,
+        pessoa: pessoa.trim(),
+        sabor: current.sabores.length > 0 ? sabor : null,
+        quantidade,
       })
       toast.success('Contribuição registrada')
       onOpenChange(false)
@@ -175,8 +116,8 @@ export function ContributeDialog({
         <DialogHeader>
           <DialogTitle>Contribuir — {item.nome}</DialogTitle>
           <DialogDescription>
-            Já entrou: {formatQty(total, unit, integer)} · Necessário:{' '}
-            {item.qtdNecessaria || '—'}
+            Já entrou: {formatQty(total, item.unidade)} · Necessário:{' '}
+            {formatNecessario(item)}
           </DialogDescription>
         </DialogHeader>
 
@@ -188,6 +129,7 @@ export function ContributeDialog({
               value={pessoa}
               disabled={disabled || busy}
               placeholder="João"
+              maxLength={80}
               className="h-11 text-base"
               autoComplete="name"
               onChange={(e) => setPessoa(e.target.value)}
@@ -197,31 +139,31 @@ export function ContributeDialog({
           <div className="space-y-2">
             <Label>Qual a sua comum congregação?</Label>
             <RadioGroup
-              value={congregacao || undefined}
-              onValueChange={(v) => setCongregacao(v as Congregacao)}
+              value={igrejaId || undefined}
+              onValueChange={setIgrejaId}
               className="grid gap-2"
               disabled={disabled || busy}
             >
-              {CONGREGACOES.map((option) => {
-                const id = `cong-${option}`
+              {igrejas.map((option) => {
+                const id = `cong-${option.id}`
                 return (
                   <label
-                    key={option}
+                    key={option.id}
                     htmlFor={id}
                     className={cn(
                       'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 touch-manipulation',
-                      congregacao === option && 'border-primary bg-primary/5',
+                      igrejaId === option.id && 'border-primary bg-primary/5',
                     )}
                   >
-                    <RadioGroupItem value={option} id={id} />
-                    <span className="text-sm font-medium">{option}</span>
+                    <RadioGroupItem value={option.id} id={id} />
+                    <span className="text-sm font-medium">{option.nome}</span>
                   </label>
                 )
               })}
             </RadioGroup>
           </div>
 
-          {item.sabores?.length ? (
+          {item.sabores.length > 0 ? (
             <div className="space-y-2">
               <Label>Sabor</Label>
               <RadioGroup
@@ -279,7 +221,7 @@ export function ContributeDialog({
               />
               {unitLabel ? (
                 <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
-                  {unitLabel === 'pc' ? 'pct' : unitLabel}
+                  {unitLabel}
                 </span>
               ) : null}
             </div>

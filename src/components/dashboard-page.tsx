@@ -5,58 +5,48 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   formatContributionPhrase,
+  formatNecessario,
   formatQty,
-  getItemTotal,
-  isIntegerUnit,
+  isItemCompleto,
+  itemFalta,
+  itemTotal,
   mealProgress,
   MEAL_LABELS,
-  parseRequiredQty,
-  parseUnit,
-  type CatalogMap,
-  type ContributionEntry,
+  type EnsaioPublico,
   type MealKey,
-} from '@/data/ingredients'
+} from '@/data/ensaio'
 
 type DashboardPageProps = {
-  catalog: CatalogMap
+  data: EnsaioPublico
 }
 
 function MealSummaryCard({
   meal,
-  catalog,
+  data,
 }: {
   meal: MealKey
-  catalog: CatalogMap
+  data: EnsaioPublico
 }) {
-  const { items, quantities } = catalog[meal]
-  const progress = mealProgress(items, quantities)
-  const rows = items
-    .filter((item) => item.editavel !== false)
-    .map((item) => {
-      const required = parseRequiredQty(item.qtdNecessaria)
-      const got = getItemTotal(item, quantities)
-      const unit = parseUnit(item.qtdNecessaria)
-      const integer = isIntegerUnit(unit)
-      const complete = required != null ? got >= required : got > 0
-      const falta =
-        required != null && got < required
-          ? formatQty(required - got, unit, integer)
-          : null
-
-      return {
-        nome: item.nome,
-        necessario: item.qtdNecessaria || '—',
-        entrou: formatQty(got, unit, integer),
-        falta,
-        complete,
-      }
-    })
+  const items = data.itens.filter((i) => i.refeicao === meal)
+  const { contribuicoes } = data
+  const progress = mealProgress(items, contribuicoes)
+  const rows = items.map((item) => {
+    const falta = itemFalta(item, contribuicoes)
+    return {
+      id: item.id,
+      nome: item.nome,
+      necessario: formatNecessario(item),
+      entrou: formatQty(itemTotal(item, contribuicoes), item.unidade),
+      falta: falta ? formatQty(falta, item.unidade) : null,
+      complete: isItemCompleto(item, contribuicoes),
+    }
+  })
 
   return (
     <section className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {meal === 'Cafe' ? (
+          {meal === 'cafe' ? (
             <Coffee className="size-5" />
           ) : (
             <UtensilsCrossed className="size-5" />
@@ -94,7 +84,7 @@ function MealSummaryCard({
         <ul className="max-h-[28rem] space-y-2 overflow-y-auto text-sm">
           {rows.map((row) => (
             <li
-              key={row.nome}
+              key={row.id}
               className="flex items-start justify-between gap-3 border-b border-border/50 pb-2 last:border-0 last:pb-0"
             >
               <div className="min-w-0">
@@ -116,27 +106,21 @@ function MealSummaryCard({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">Nenhum item nesta aba.</p>
+        <p className="text-sm text-muted-foreground">
+          Nenhum item cadastrado nesta refeição.
+        </p>
       )}
 
       <Button asChild variant="outline" className="mt-4 w-full">
-        <Link to={meal === 'Cafe' ? '/cafe' : '/almoco'}>Ver lista</Link>
+        <Link to={`/e/${data.ensaio.slug}/${meal}`}>Ver lista</Link>
       </Button>
     </section>
   )
 }
 
-function latestContributions(catalog: CatalogMap, limit = 20): ContributionEntry[] {
-  const all = [
-    ...catalog.Cafe.contributions,
-    ...catalog.Almoco.contributions,
-  ]
-  // Coluna D é append — últimos no final
-  return all.slice().reverse().slice(0, limit)
-}
-
-export function DashboardPage({ catalog }: DashboardPageProps) {
-  const recent = latestContributions(catalog)
+export function DashboardPage({ data }: DashboardPageProps) {
+  const itemById = new Map(data.itens.map((i) => [i.id, i]))
+  const recent = data.contribuicoes.slice(0, 20)
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pb-24 sm:p-4 md:p-6 md:pb-6">
@@ -153,8 +137,8 @@ export function DashboardPage({ catalog }: DashboardPageProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <MealSummaryCard meal="Cafe" catalog={catalog} />
-        <MealSummaryCard meal="Almoco" catalog={catalog} />
+        <MealSummaryCard meal="cafe" data={data} />
+        <MealSummaryCard meal="almoco" data={data} />
       </div>
 
       <section className="rounded-xl border bg-card p-4 shadow-sm">
@@ -165,14 +149,18 @@ export function DashboardPage({ catalog }: DashboardPageProps) {
           </p>
         ) : (
           <ul className="space-y-3">
-            {recent.map((entry, index) => (
-              <li
-                key={`${entry.pessoa}-${entry.ingredientNome}-${entry.qtdLabel}-${index}`}
-                className="border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"
-              >
-                {formatContributionPhrase(entry)}
-              </li>
-            ))}
+            {recent.map((entry) => {
+              const item = itemById.get(entry.itemId)
+              if (!item) return null
+              return (
+                <li
+                  key={entry.id}
+                  className="border-b border-border/60 pb-3 text-sm last:border-0 last:pb-0"
+                >
+                  {formatContributionPhrase(entry, item)}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

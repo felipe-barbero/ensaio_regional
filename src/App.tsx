@@ -1,88 +1,59 @@
 import { useCallback } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 
-import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardPage } from '@/components/dashboard-page'
 import { MealPage } from '@/components/meal-page'
-import { MobileBottomNav } from '@/components/mobile-bottom-nav'
-import { Separator } from '@/components/ui/separator'
+import type { MealKey } from '@/data/ensaio'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { ConfigError } from '@/pages/public/config-error'
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
-import { useCatalog } from '@/hooks/use-quantities'
+  EnsaioLayout,
+  useEnsaioContext,
+} from '@/pages/public/ensaio-layout'
+import { HomePage } from '@/pages/public/home-page'
+import { NotFoundPage } from '@/pages/public/not-found-page'
 
-export default function App() {
-  const {
-    catalog,
-    loading,
-    syncing,
-    saving,
-    lastSyncedAt,
-    error,
-    refresh,
-    contribute,
-  } = useCatalog()
+function EnsaioResumo() {
+  const { data } = useEnsaioContext()
+  return <DashboardPage data={data} />
+}
+
+function EnsaioRefeicao({ meal }: { meal: MealKey }) {
+  const ctx = useEnsaioContext()
+  const { refresh } = ctx
 
   const handleRefresh = useCallback(() => {
     void refresh(true)
   }, [refresh])
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="min-h-svh">
-        <header
-          className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-4"
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        >
-          <SidebarTrigger className="size-11 touch-manipulation md:size-8" />
-          <Separator orientation="vertical" className="mr-1 hidden h-4 sm:block" />
-          <span className="truncate text-sm font-medium">
-            Ensaio Regional
-          </span>
-        </header>
-        <Routes>
-          <Route path="/" element={<DashboardPage catalog={catalog} />} />
-          <Route
-            path="/cafe"
-            element={
-              <MealPage
-                meal="Cafe"
-                items={catalog.Cafe.items}
-                quantities={catalog.Cafe.quantities}
-                loading={loading}
-                syncing={syncing}
-                saving={saving}
-                lastSyncedAt={lastSyncedAt}
-                error={error}
-                onRefresh={handleRefresh}
-                onContribute={contribute}
-              />
-            }
-          />
-          <Route
-            path="/almoco"
-            element={
-              <MealPage
-                meal="Almoco"
-                items={catalog.Almoco.items}
-                quantities={catalog.Almoco.quantities}
-                loading={loading}
-                syncing={syncing}
-                saving={saving}
-                lastSyncedAt={lastSyncedAt}
-                error={error}
-                onRefresh={handleRefresh}
-                onContribute={contribute}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <MobileBottomNav />
-      </SidebarInset>
-    </SidebarProvider>
+    <MealPage
+      meal={meal}
+      data={ctx.data}
+      encerrado={ctx.data.ensaio.status === 'encerrado'}
+      loading={ctx.loading}
+      syncing={ctx.syncing}
+      saving={ctx.saving}
+      lastSyncedAt={ctx.lastSyncedAt}
+      error={ctx.error}
+      onRefresh={handleRefresh}
+      onContribute={ctx.contribuir}
+    />
+  )
+}
+
+export default function App() {
+  if (!isSupabaseConfigured()) return <ConfigError />
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/e/:slug" element={<EnsaioLayout />}>
+        <Route index element={<EnsaioResumo />} />
+        <Route path="cafe" element={<EnsaioRefeicao meal="cafe" />} />
+        <Route path="almoco" element={<EnsaioRefeicao meal="almoco" />} />
+      </Route>
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   )
 }

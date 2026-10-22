@@ -14,39 +14,41 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  formatNecessario,
   formatQty,
-  getItemTotal,
-  isIntegerUnit,
-  parseRequiredQty,
-  parseUnit,
-  type Ingredient,
-  type MealKey,
-} from '@/data/ingredients'
-import type { ContributePayload } from '@/lib/api'
+  isItemCompleto,
+  itemFalta,
+  itemTotal,
+  saborTotal,
+  type Contribuicao,
+  type ContribuirInput,
+  type Igreja,
+  type Item,
+} from '@/data/ensaio'
 import { cn } from '@/lib/utils'
 
 type IngredientsTableProps = {
-  meal: MealKey
-  items: Ingredient[]
-  quantities: Record<string, string>
+  itens: Item[]
+  contribuicoes: Contribuicao[]
+  igrejas: Igreja[]
   disabled?: boolean
-  onContribute: (payload: ContributePayload) => Promise<void> | void
+  encerrado?: boolean
+  onContribute: (input: ContribuirInput) => Promise<void>
 }
 
 function StatusBadge({
   item,
-  total,
+  contribuicoes,
 }: {
-  item: Ingredient
-  total: number
+  item: Item
+  contribuicoes: Contribuicao[]
 }) {
-  const required = parseRequiredQty(item.qtdNecessaria)
-  const unit = parseUnit(item.qtdNecessaria)
-  const integer = isIntegerUnit(unit)
+  const total = itemTotal(item, contribuicoes)
+  const falta = itemFalta(item, contribuicoes)
 
   if (total <= 0) return <Badge variant="outline">Pendente</Badge>
-  if (required == null) return <Badge variant="secondary">Registrado</Badge>
-  if (total >= required) {
+  if (falta == null) return <Badge variant="secondary">Registrado</Badge>
+  if (isItemCompleto(item, contribuicoes)) {
     return (
       <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
         Completo
@@ -54,28 +56,47 @@ function StatusBadge({
     )
   }
   return (
-    <Badge variant="destructive">
-      Falta {formatQty(required - total, unit, integer)}
-    </Badge>
+    <Badge variant="destructive">Falta {formatQty(falta, item.unidade)}</Badge>
+  )
+}
+
+/** "Chocolate 4 · Cenoura 2 · Não informado 6" (omite zerados) */
+function SaboresDetalhe({
+  item,
+  contribuicoes,
+}: {
+  item: Item
+  contribuicoes: Contribuicao[]
+}) {
+  if (item.sabores.length === 0) return null
+  const partes = [
+    ...item.sabores.map((s) => [s, saborTotal(item, s, contribuicoes)] as const),
+    ['Não informado', saborTotal(item, null, contribuicoes)] as const,
+  ].filter(([, n]) => n > 0)
+  if (partes.length === 0) return null
+
+  return (
+    <p className="mt-0.5 text-xs text-muted-foreground">
+      {partes.map(([s, n]) => `${s} ${n}`).join(' · ')}
+    </p>
   )
 }
 
 function IngredientCard({
   item,
-  quantities,
+  contribuicoes,
   disabled,
+  encerrado,
   onContributeClick,
 }: {
-  item: Ingredient
-  quantities: Record<string, string>
+  item: Item
+  contribuicoes: Contribuicao[]
   disabled?: boolean
-  onContributeClick: (item: Ingredient) => void
+  encerrado?: boolean
+  onContributeClick: (item: Item) => void
 }) {
-  const total = getItemTotal(item, quantities)
-  const unit = parseUnit(item.qtdNecessaria)
-  const integer = isIntegerUnit(unit)
-  const required = parseRequiredQty(item.qtdNecessaria)
-  const incomplete = required != null && total < required
+  const total = itemTotal(item, contribuicoes)
+  const incomplete = !isItemCompleto(item, contribuicoes) && item.qtdNecessaria != null
 
   return (
     <article
@@ -90,52 +111,54 @@ function IngredientCard({
           <p className="mt-1 text-sm text-muted-foreground">
             Necessário:{' '}
             <span className="font-medium text-foreground">
-              {item.qtdNecessaria || '—'}
+              {formatNecessario(item)}
             </span>
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Já entrou:{' '}
             <span className="font-medium text-foreground">
-              {formatQty(total, unit, integer)}
+              {formatQty(total, item.unidade)}
             </span>
           </p>
+          <SaboresDetalhe item={item} contribuicoes={contribuicoes} />
         </div>
-        <StatusBadge item={item} total={total} />
+        <StatusBadge item={item} contribuicoes={contribuicoes} />
       </div>
 
-      <Button
-        type="button"
-        className="h-11 w-full touch-manipulation"
-        disabled={disabled}
-        onClick={() => onContributeClick(item)}
-      >
-        <Plus className="size-4" />
-        Contribuir
-      </Button>
+      {encerrado ? null : (
+        <Button
+          type="button"
+          className="h-11 w-full touch-manipulation"
+          disabled={disabled}
+          onClick={() => onContributeClick(item)}
+        >
+          <Plus className="size-4" />
+          Contribuir
+        </Button>
+      )}
     </article>
   )
 }
 
 export function IngredientsTable({
-  meal,
-  items,
-  quantities,
+  itens,
+  contribuicoes,
+  igrejas,
   disabled,
+  encerrado,
   onContribute,
 }: IngredientsTableProps) {
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Ingredient | null>(null)
+  const [selected, setSelected] = useState<Item | null>(null)
   const [open, setOpen] = useState(false)
-
-  const editableItems = items.filter((item) => item.editavel !== false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return editableItems
-    return editableItems.filter((item) => item.nome.toLowerCase().includes(q))
-  }, [editableItems, search])
+    if (!q) return itens
+    return itens.filter((item) => item.nome.toLowerCase().includes(q))
+  }, [itens, search])
 
-  function openContribute(item: Ingredient) {
+  function openContribute(item: Item) {
     setSelected(item)
     setOpen(true)
   }
@@ -161,10 +184,11 @@ export function IngredientsTable({
           <div className="flex flex-col gap-3 md:hidden">
             {filtered.map((item) => (
               <IngredientCard
-                key={item.nome}
+                key={item.id}
                 item={item}
-                quantities={quantities}
+                contribuicoes={contribuicoes}
                 disabled={disabled}
+                encerrado={encerrado}
                 onContributeClick={openContribute}
               />
             ))}
@@ -178,42 +202,46 @@ export function IngredientsTable({
                   <TableHead>Qtd necessária</TableHead>
                   <TableHead>Já entrou</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-36" />
+                  {encerrado ? null : <TableHead className="w-36" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((item) => {
-                  const total = getItemTotal(item, quantities)
-                  const unit = parseUnit(item.qtdNecessaria)
-                  const integer = isIntegerUnit(unit)
-                  const required = parseRequiredQty(item.qtdNecessaria)
-                  const incomplete = required != null && total < required
+                  const total = itemTotal(item, contribuicoes)
+                  const incomplete =
+                    !isItemCompleto(item, contribuicoes) &&
+                    item.qtdNecessaria != null
 
                   return (
                     <TableRow
-                      key={item.nome}
+                      key={item.id}
                       className={cn(incomplete && 'bg-destructive/5')}
                     >
-                      <TableCell className="font-medium">{item.nome}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.nome}
+                        <SaboresDetalhe item={item} contribuicoes={contribuicoes} />
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {item.qtdNecessaria || '—'}
+                        {formatNecessario(item)}
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {formatQty(total, unit, integer)}
+                        {formatQty(total, item.unidade)}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge item={item} total={total} />
+                        <StatusBadge item={item} contribuicoes={contribuicoes} />
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          disabled={disabled}
-                          onClick={() => openContribute(item)}
-                        >
-                          <Plus className="size-4" />
-                          Contribuir
-                        </Button>
-                      </TableCell>
+                      {encerrado ? null : (
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            disabled={disabled}
+                            onClick={() => openContribute(item)}
+                          >
+                            <Plus className="size-4" />
+                            Contribuir
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   )
                 })}
@@ -226,9 +254,9 @@ export function IngredientsTable({
       <ContributeDialog
         open={open}
         onOpenChange={setOpen}
-        meal={meal}
         item={selected}
-        quantities={quantities}
+        contribuicoes={contribuicoes}
+        igrejas={igrejas}
         disabled={disabled}
         onContribute={onContribute}
       />
