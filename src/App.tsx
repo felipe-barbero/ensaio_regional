@@ -5,6 +5,9 @@ import { DashboardPage } from '@/components/dashboard-page'
 import { MealPage } from '@/components/meal-page'
 import type { MealKey } from '@/data/ensaio'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { AdminLayout } from '@/pages/admin/admin-layout'
+import { LoginPage } from '@/pages/admin/login-page'
+import { RequireAdmin } from '@/pages/admin/require-admin'
 import { ConfigError } from '@/pages/public/config-error'
 import {
   EnsaioLayout,
@@ -12,6 +15,10 @@ import {
 } from '@/pages/public/ensaio-layout'
 import { HomePage } from '@/pages/public/home-page'
 import { NotFoundPage } from '@/pages/public/not-found-page'
+
+function EmConstrucao() {
+  return <p className="text-sm text-muted-foreground">Em construção.</p>
+}
 
 function EnsaioResumo() {
   const { data } = useEnsaioContext()
@@ -52,6 +59,15 @@ export default function App() {
         <Route index element={<EnsaioResumo />} />
         <Route path="cafe" element={<EnsaioRefeicao meal="cafe" />} />
         <Route path="almoco" element={<EnsaioRefeicao meal="almoco" />} />
+      </Route>
+      <Route path="/admin/login" element={<LoginPage />} />
+      <Route path="/admin" element={<RequireAdmin />}>
+        <Route element={<AdminLayout />}>
+          <Route index element={<EmConstrucao />} />
+          <Route path="ensaios/novo" element={<EmConstrucao />} />
+          <Route path="ensaios/:id" element={<EmConstrucao />} />
+          <Route path="regioes" element={<EmConstrucao />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
