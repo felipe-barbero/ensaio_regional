@@ -12,6 +12,7 @@ import {
 import type { EnsaioPublico } from '@/data/ensaio'
 import { useEnsaio, type UseEnsaio } from '@/hooks/use-ensaio'
 import { formatData } from '@/lib/format'
+import { normalizarSlug } from '@/lib/slug'
 import { NotFoundPage } from '@/pages/public/not-found-page'
 
 export type EnsaioContext = UseEnsaio & { data: EnsaioPublico }
@@ -22,7 +23,8 @@ export function useEnsaioContext(): EnsaioContext {
 
 export function EnsaioLayout() {
   const { slug = '' } = useParams()
-  const state = useEnsaio(slug)
+  // Tolera link digitado à mão com acento, espaço ou maiúscula
+  const state = useEnsaio(normalizarSlug(slug))
   const { data, notFound } = state
 
   if (notFound) {

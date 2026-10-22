@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Copy, ExternalLink, Loader2 } from 'lucide-react'
+import { Copy, Download, ExternalLink, Loader2, MessageCircle } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Contribuicao, Ensaio, Igreja, Item, MealKey } from '@/data/ensaio'
+import {
+  MEAL_LABELS,
+  type Contribuicao,
+  type Ensaio,
+  type Igreja,
+  type Item,
+  type MealKey,
+} from '@/data/ensaio'
 import {
   getEnsaio,
   listContribuicoes,
   listItens,
   listRegioes,
 } from '@/lib/admin-api'
+import { baixarArquivo, contribuicoesCsv } from '@/lib/exportar-csv'
 import { formatData } from '@/lib/format'
 import { ensaioUrl } from '@/lib/links'
+import { mensagemFaltantes } from '@/lib/mensagem-whatsapp'
 import { ContribuicoesTab } from '@/pages/admin/tabs/contribuicoes-tab'
 import { DadosTab } from '@/pages/admin/tabs/dados-tab'
+import { IgrejasTab } from '@/pages/admin/tabs/igrejas-tab'
 import { ItensTab } from '@/pages/admin/tabs/itens-tab'
 
 export type EnsaioAdminData = {
@@ -72,6 +82,39 @@ function CopyLinks({ slug }: { slug: string }) {
   )
 }
 
+function AcoesGrupo({ data }: { data: EnsaioAdminData }) {
+  const { ensaio, itens, contribuicoes } = data
+
+  async function copiarMensagem(meal: MealKey) {
+    const texto = mensagemFaltantes(ensaio, meal, itens, contribuicoes, ensaioUrl(ensaio.slug, meal))
+    try {
+      await navigator.clipboard.writeText(texto)
+      toast.success(`Mensagem do ${MEAL_LABELS[meal]} copiada — cole no grupo`)
+    } catch {
+      toast.error('Não foi possível copiar a mensagem')
+    }
+  }
+
+  function exportar() {
+    baixarArquivo(`contribuicoes-${ensaio.slug}.csv`, contribuicoesCsv(itens, contribuicoes))
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {(['cafe', 'almoco'] as MealKey[]).map((meal) => (
+        <Button key={meal} variant="outline" size="sm" onClick={() => void copiarMensagem(meal)}>
+          <MessageCircle className="size-4" />
+          Mensagem do {meal === 'cafe' ? 'Café' : 'Almoço'}
+        </Button>
+      ))}
+      <Button variant="outline" size="sm" onClick={exportar}>
+        <Download className="size-4" />
+        Exportar planilha
+      </Button>
+    </div>
+  )
+}
+
 export function EnsaioDetailPage() {
   const { id = '' } = useParams()
   const [data, setData] = useState<EnsaioAdminData | null>(null)
@@ -112,6 +155,7 @@ export function EnsaioDetailPage() {
           {ensaio.regiao.nome} · {formatData(ensaio.data)}
         </p>
         <CopyLinks slug={ensaio.slug} />
+        <AcoesGrupo data={data} />
       </div>
 
       <Tabs defaultValue="itens">
@@ -119,6 +163,7 @@ export function EnsaioDetailPage() {
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="itens">Itens</TabsTrigger>
           <TabsTrigger value="contribuicoes">Contribuições</TabsTrigger>
+          <TabsTrigger value="igrejas">Por igreja</TabsTrigger>
         </TabsList>
         <TabsContent value="dados" className="pt-2">
           <DadosTab ensaio={ensaio} onChanged={load} />
@@ -128,6 +173,9 @@ export function EnsaioDetailPage() {
         </TabsContent>
         <TabsContent value="contribuicoes" className="pt-2">
           <ContribuicoesTab data={data} onChanged={load} />
+        </TabsContent>
+        <TabsContent value="igrejas" className="pt-2">
+          <IgrejasTab data={data} />
         </TabsContent>
       </Tabs>
     </>

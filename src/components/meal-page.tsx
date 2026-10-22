@@ -147,7 +147,8 @@ export function MealPage({
           itens={items}
           contribuicoes={data.contribuicoes}
           igrejas={data.igrejas}
-          disabled={loading || syncing || saving}
+          // Só trava enquanto salva: o sync de 30 s não pode tirar o foco de quem digita
+          disabled={saving}
           encerrado={encerrado}
           onContribute={onContribute}
         />

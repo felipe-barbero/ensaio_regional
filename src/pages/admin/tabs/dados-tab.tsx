@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { CopyPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -24,11 +25,12 @@ export function DadosTab({
   const [slug, setSlug] = useState(ensaio.slug)
   const [busy, setBusy] = useState(false)
 
+  // Só ao trocar de ensaio: recarregar (ex.: Encerrar) não apaga edições em andamento
   useEffect(() => {
     setNome(ensaio.nome)
     setData(ensaio.data)
     setSlug(ensaio.slug)
-  }, [ensaio])
+  }, [ensaio.id])
 
   async function salvar(patch: Parameters<typeof atualizarEnsaio>[1], ok: string) {
     setBusy(true)
@@ -131,6 +133,13 @@ export function DadosTab({
             }
           >
             {aberto ? 'Encerrar ensaio' : 'Reabrir ensaio'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/admin/ensaios/novo?copiar=${ensaio.id}`)}
+          >
+            <CopyPlus className="size-4" />
+            Duplicar ensaio
           </Button>
           <ConfirmButton
             title="Excluir este ensaio?"

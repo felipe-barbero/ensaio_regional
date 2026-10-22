@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,8 @@ const NENHUM = 'nenhum'
 
 export function EnsaioNewPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const copiarDe = params.get('copiar')
   const [regioes, setRegioes] = useState<RegiaoComIgrejas[]>([])
   const [ensaios, setEnsaios] = useState<EnsaioResumo[]>([])
   const [slugs, setSlugs] = useState<string[]>([])
@@ -49,9 +51,15 @@ export function EnsaioNewPage() {
         setRegioes(r)
         setEnsaios(e)
         setSlugs(s)
+        // "Duplicar ensaio": mesma região e lista do ensaio de origem
+        const origem = e.find((x) => x.id === copiarDe)
+        if (origem) {
+          setRegiaoId(origem.regiao.id)
+          setOrigemId(origem.id)
+        }
       })
       .catch((err: Error) => toast.error(err.message))
-  }, [])
+  }, [copiarDe])
 
   const regiao = regioes.find((r) => r.id === regiaoId)
 
