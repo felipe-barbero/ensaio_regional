@@ -1,11 +1,16 @@
-/** Minúsculas, sem acentos, tudo que não for letra/número vira hífen */
-export function normalizarSlug(raw: string): string {
+/** Como normalizarSlug, mas mantém o hífen final (campo sendo digitado) */
+export function slugDigitando(raw: string): string {
   return raw
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/^-+/, '')
+}
+
+/** Minúsculas, sem acentos, tudo que não for letra/número vira hífen */
+export function normalizarSlug(raw: string): string {
+  return slugDigitando(raw).replace(/-+$/, '')
 }
 
 /** regiao-AAAA-MM-DD */

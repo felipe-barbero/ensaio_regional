@@ -73,7 +73,17 @@ async function main() {
     process.exit(1)
   }
   if (dryRun) {
-    console.table(report.totais)
+    console.table(
+      payload.itens.map((i) => ({
+        refeicao: i.refeicao,
+        item: i.nome,
+        necessario: i.qtd_necessaria,
+        unidade: i.unidade || '(sem)',
+        sabores: i.sabores.join(', '),
+        planilha: report.totais.find((t) => t.refeicao === i.refeicao && t.item === i.nome)
+          ?.planilha,
+      })),
+    )
     console.log('\n--dry-run: nada foi gravado.')
     return
   }

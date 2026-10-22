@@ -59,7 +59,10 @@ function normalizeUnit(raw: string): Unit {
 }
 
 export function parseQtdNecessaria(raw: string): { qtd: number | null; unidade: Unit } {
-  const unit = raw.trim().match(/\b(kg|l|un|pc|pct|cx|ml)\b/i)
+  // "10kg" não tem \b entre o número e a unidade: tenta colado ao número primeiro
+  const unit =
+    raw.trim().match(/\d+(?:[.,]\d+)?\s*(kg|l|un|pc|pct|cx|ml)\b/i) ??
+    raw.trim().match(/\b(kg|l|un|pc|pct|cx|ml)\b/i)
   return {
     qtd: parseNumber(raw),
     unidade: unit ? normalizeUnit(unit[1]) : '',
@@ -83,11 +86,22 @@ export function parseLogLine(
   return { pessoa, igreja, quantidade }
 }
 
+// Números na coluna de sabores são resto da planilha antiga, não sabores
+function isSabor(s: string): boolean {
+  return Boolean(s) && !/^\d+(?:[.,]\d+)?$/.test(s)
+}
+
 function splitSabores(raw: string | undefined): string[] {
   return (raw ?? '')
     .split(/[,;/|]/)
     .map((s) => s.trim())
-    .filter(Boolean)
+    .filter(isSabor)
+}
+
+/** "10 maços" → "maços" (só quando a unidade não é suportada) */
+function unidadeDesconhecida(raw: string): string | null {
+  const match = raw.trim().match(/^\d+(?:[.,]\d+)?\s*([^\d\s.,].*)$/)
+  return match ? match[1].trim() : null
 }
 
 export function buildImportPayload(
@@ -105,16 +119,19 @@ export function buildImportPayload(
       const nome = row.nome.trim()
       if (!nome.includes('::')) continue
       const [pai, sabor] = nome.split('::').map((s) => s.trim())
+      if (!isSabor(sabor)) continue
       filhos.set(pai, [...(filhos.get(pai) ?? []), { sabor, total: parseNumber(row.qtdEntrou) ?? 0 }])
     }
 
     let ordem = 0
     for (const row of rows) {
-      const nome = row.nome.trim()
-      if (nome.includes('::')) continue
+      const nomePlanilha = row.nome.trim()
+      if (nomePlanilha.includes('::')) continue
 
       const { qtd, unidade } = parseQtdNecessaria(row.qtdNecessaria ?? '')
-      const doFilho = filhos.get(nome) ?? []
+      const extra = unidade ? null : unidadeDesconhecida(row.qtdNecessaria ?? '')
+      const nome = extra ? `${nomePlanilha} (${extra})` : nomePlanilha
+      const doFilho = filhos.get(nomePlanilha) ?? []
       const daColuna = splitSabores(row.sabores)
       const sabores = daColuna.length > 0 ? daColuna : doFilho.map((f) => f.sabor)
 

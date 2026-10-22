@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Ensaio } from '@/data/ensaio'
 import { atualizarEnsaio, excluirEnsaio } from '@/lib/admin-api'
-import { normalizarSlug } from '@/lib/slug'
+import { normalizarSlug, slugDigitando } from '@/lib/slug'
 
 export function DadosTab({
   ensaio,
@@ -45,11 +45,12 @@ export function DadosTab({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!nome.trim() || !data || !slug) {
+    const slugFinal = normalizarSlug(slug)
+    if (!nome.trim() || !data || !slugFinal) {
       toast.error('Preencha nome, data e link')
       return
     }
-    void salvar({ nome: nome.trim(), data, slug }, 'Dados salvos')
+    void salvar({ nome: nome.trim(), data, slug: slugFinal }, 'Dados salvos')
   }
 
   async function excluir() {
@@ -98,7 +99,8 @@ export function DadosTab({
                 id="dados-slug"
                 value={slug}
                 className="h-11 font-mono"
-                onChange={(e) => setSlug(normalizarSlug(e.target.value))}
+                onChange={(e) => setSlug(slugDigitando(e.target.value))}
+                onBlur={() => setSlug(normalizarSlug(slug))}
               />
               <p className="text-xs text-muted-foreground">
                 Mudar o link invalida os links já enviados nos grupos.

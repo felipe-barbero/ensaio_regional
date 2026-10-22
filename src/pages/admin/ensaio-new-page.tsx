@@ -25,7 +25,7 @@ import {
   type RegiaoComIgrejas,
 } from '@/lib/admin-api'
 import { formatData } from '@/lib/format'
-import { gerarSlug, normalizarSlug, slugUnico } from '@/lib/slug'
+import { gerarSlug, normalizarSlug, slugDigitando, slugUnico } from '@/lib/slug'
 
 const NENHUM = 'nenhum'
 
@@ -64,7 +64,8 @@ export function EnsaioNewPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!regiaoId || !data || !nome.trim() || !slug) {
+    const slugFinal = normalizarSlug(slug)
+    if (!regiaoId || !data || !nome.trim() || !slugFinal) {
       toast.error('Preencha região, data, nome e link')
       return
     }
@@ -72,7 +73,7 @@ export function EnsaioNewPage() {
     setBusy(true)
     let novoId: string | null = null
     try {
-      novoId = await criarEnsaio({ regiaoId, nome, slug, data })
+      novoId = await criarEnsaio({ regiaoId, nome, slug: slugFinal, data })
       if (origemId !== NENHUM) {
         const n = await copiarItens(origemId, novoId)
         toast.success(`Ensaio criado com ${n} itens copiados`)
@@ -149,7 +150,7 @@ export function EnsaioNewPage() {
               className="h-11 font-mono"
               onChange={(e) => {
                 setSlugEditado(true)
-                setSlug(normalizarSlug(e.target.value))
+                setSlug(slugDigitando(e.target.value))
               }}
             />
             <p className="truncate text-xs text-muted-foreground">

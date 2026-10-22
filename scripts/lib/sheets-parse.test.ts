@@ -107,3 +107,41 @@ test('buildImportPayload lista linhas ignoradas e elas entram no ajuste', () => 
     { pessoa: 'Ajuste importado', igreja: null, quantidade: 4, origem: 'ajuste' },
   ])
 })
+
+test('parseQtdNecessaria com unidade colada no número', () => {
+  expect(parseQtdNecessaria('10kg')).toEqual({ qtd: 10, unidade: 'kg' })
+  expect(parseQtdNecessaria('5L')).toEqual({ qtd: 5, unidade: 'L' })
+  expect(parseQtdNecessaria('4pct')).toEqual({ qtd: 4, unidade: 'pct' })
+})
+
+test('buildImportPayload ignora sabores numéricos (resto da planilha antiga)', () => {
+  const sheet = {
+    Cafe: { items: [] },
+    Almoco: {
+      items: [
+        { nome: 'Feijão Preto', qtdNecessaria: '10 kg', qtdEntrou: '1 kg', sabores: '14' },
+        { nome: 'Feijão Preto::14', qtdNecessaria: '', qtdEntrou: '1 kg' },
+      ],
+    },
+  }
+  const { payload } = buildImportPayload(sheet, OPTS)
+  expect(payload.itens).toHaveLength(1)
+  expect(payload.itens[0].sabores).toEqual([])
+})
+
+test('buildImportPayload mantém unidade desconhecida no nome', () => {
+  const sheet = {
+    Cafe: { items: [] },
+    Almoco: {
+      items: [
+        { nome: 'Couve folha', qtdNecessaria: '10 maços', qtdEntrou: '10' },
+        { nome: 'Marmitas 500 ml', qtdNecessaria: '200', qtdEntrou: '200' },
+      ],
+    },
+  }
+  const { payload } = buildImportPayload(sheet, OPTS)
+  expect(payload.itens.map((i) => [i.nome, i.qtd_necessaria, i.unidade])).toEqual([
+    ['Couve folha (maços)', 10, ''],
+    ['Marmitas 500 ml', 200, ''],
+  ])
+})

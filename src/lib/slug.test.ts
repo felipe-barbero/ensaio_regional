@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { gerarSlug, normalizarSlug, slugUnico } from './slug'
+import { gerarSlug, normalizarSlug, slugDigitando, slugUnico } from './slug'
 
 test('gerarSlug', () => {
   expect(gerarSlug('Itapema', '2026-10-10')).toBe('itapema-2026-10-10')
@@ -25,4 +25,11 @@ test('slugUnico', () => {
       'itapema-2026-10-10-2',
     ]),
   ).toBe('itapema-2026-10-10-3')
+})
+
+test('slugDigitando mantém o hífen final enquanto o admin digita', () => {
+  expect(slugDigitando('itapema-')).toBe('itapema-')
+  expect(slugDigitando('Itapema Sul')).toBe('itapema-sul')
+  expect(slugDigitando('Itapema ')).toBe('itapema-')
+  expect(slugDigitando('-itapema')).toBe('itapema')
 })
