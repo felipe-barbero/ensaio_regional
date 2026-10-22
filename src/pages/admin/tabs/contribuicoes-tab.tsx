@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ConfirmButton } from '@/components/confirm-button'
@@ -29,6 +29,7 @@ import {
   type Item,
 } from '@/data/ensaio'
 import { atualizarContribuicao, excluirContribuicao } from '@/lib/admin-api'
+import { agruparContribuicoes } from '@/lib/agrupar-contribuicoes'
 import type { EnsaioAdminData } from '@/pages/admin/ensaio-detail-page'
 
 // Radix Select não aceita value vazio
@@ -201,6 +202,7 @@ export function ContribuicoesTab({
 }) {
   const [refeicao, setRefeicao] = useState(TODOS)
   const [igreja, setIgreja] = useState(TODOS)
+  const [busca, setBusca] = useState('')
   const [editing, setEditing] = useState<Contribuicao | null>(null)
   const itemById = useMemo(() => new Map(data.itens.map((i) => [i.id, i])), [data.itens])
 
@@ -210,6 +212,8 @@ export function ContribuicoesTab({
     if (igreja !== TODOS && (c.igrejaId ?? NENHUMA) !== igreja) return false
     return true
   })
+  const grupos = agruparContribuicoes(data.itens, filtradas, busca)
+  const totalVisiveis = grupos.reduce((n, g) => n + g.contribuicoes.length, 0)
 
   async function excluir(id: string) {
     try {
@@ -223,6 +227,15 @@ export function ContribuicoesTab({
 
   return (
     <div className="grid gap-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar por item, pessoa, igreja ou sabor…"
+          className="h-11 pl-9 text-base"
+        />
+      </div>
       <div className="flex flex-wrap gap-2">
         <Select value={refeicao} onValueChange={setRefeicao}>
           <SelectTrigger className="h-10 w-44">
@@ -249,56 +262,70 @@ export function ContribuicoesTab({
           </SelectContent>
         </Select>
         <span className="self-center text-sm text-muted-foreground">
-          {filtradas.length} contribuições
+          {totalVisiveis} contribuições
         </span>
       </div>
 
-      {filtradas.length === 0 ? (
+      {grupos.length === 0 ? (
         <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          Nenhuma contribuição.
+          Nenhuma contribuição encontrada.
         </p>
       ) : (
-        <ul className="divide-y rounded-xl border bg-card">
-          {filtradas.map((c) => {
-            const item = itemById.get(c.itemId)
-            return (
-              <li key={c.id} className="flex items-center gap-2 px-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {item?.nome ?? '—'}
-                    {item && item.sabores.length > 0
-                      ? ` (${c.sabor ?? 'não informado'})`
-                      : ''}{' '}
-                    · {formatQty(c.quantidade, item?.unidade ?? '')}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {formatDataHora(c.criadoEm)} · {c.pessoa} · {c.igrejaNome ?? '—'}
-                  </p>
-                </div>
-                {c.origem !== 'link' ? (
-                  <Badge variant="secondary">{c.origem}</Badge>
-                ) : null}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Editar contribuição"
-                  onClick={() => setEditing(c)}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <ConfirmButton
-                  title="Excluir esta contribuição?"
-                  description={`${c.pessoa} · ${item?.nome ?? ''}`}
-                  onConfirm={() => void excluir(c.id)}
-                >
-                  <Button size="icon" variant="ghost" aria-label="Excluir contribuição">
-                    <Trash2 className="size-4" />
+        grupos.map(({ item, total, contribuicoes }) => (
+          <section key={item.id} className="rounded-xl border bg-card">
+            <header className="flex items-baseline justify-between gap-2 border-b px-3 py-2">
+              <h3 className="truncate text-sm font-semibold">
+                {item.nome}{' '}
+                <span className="font-normal text-muted-foreground">
+                  · {MEAL_LABELS[item.refeicao]}
+                </span>
+              </h3>
+              <span className="shrink-0 text-sm font-semibold tabular-nums">
+                {formatQty(total, item.unidade)}
+              </span>
+            </header>
+            <ul className="divide-y">
+              {contribuicoes.map((c) => (
+                <li key={c.id} className="flex items-center gap-2 px-3 py-1.5">
+                  <span className="w-16 shrink-0 text-sm font-medium tabular-nums">
+                    {formatQty(c.quantidade, item.unidade)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">
+                      {c.pessoa}
+                      {item.sabores.length > 0
+                        ? ` · ${c.sabor ?? 'sabor não informado'}`
+                        : ''}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {c.igrejaNome ?? '—'} · {formatDataHora(c.criadoEm)}
+                    </p>
+                  </div>
+                  {c.origem !== 'link' ? (
+                    <Badge variant="secondary">{c.origem}</Badge>
+                  ) : null}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Editar contribuição"
+                    onClick={() => setEditing(c)}
+                  >
+                    <Pencil className="size-4" />
                   </Button>
-                </ConfirmButton>
-              </li>
-            )
-          })}
-        </ul>
+                  <ConfirmButton
+                    title="Excluir esta contribuição?"
+                    description={`${c.pessoa} · ${item.nome}`}
+                    onConfirm={() => void excluir(c.id)}
+                  >
+                    <Button size="icon" variant="ghost" aria-label="Excluir contribuição">
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </ConfirmButton>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
 
       <EditDialog
